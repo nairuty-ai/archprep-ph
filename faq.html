@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAQ &amp; Contact — ArchPrep PH</title>
+  <meta name="description" content="Frequently asked questions about delivery, payments, refunds, and how quiz access codes work for ArchPrep PH." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="config.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="announce" class="announce" hidden></div>
+
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+        </span>
+        <span data-brand>ArchPrep PH</span>
+      </a>
+      <nav aria-label="Primary">
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="materials.html">Materials</a></li>
+          <li><a href="quizzes.html">Quizzes</a></li>
+          <li><a href="faq.html" aria-current="page">FAQ</a></li>
+        </ul>
+      </nav>
+      <div class="nav-actions">
+        <a class="btn btn--primary" href="materials.html">Browse materials</a>
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="mobile-menu" id="mobile-menu">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="materials.html">Materials</a></li>
+        <li><a href="quizzes.html">Quizzes</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page-head">
+      <div class="container">
+        <p class="eyebrow">Help &amp; contact</p>
+        <h1>Frequently asked questions</h1>
+        <p class="lead">Everything about delivery, payments, and quiz access codes. Still stuck? Email us anytime.</p>
+      </div>
+    </section>
+
+    <section class="section--tight">
+      <div class="container quiz-shell" style="max-width:760px">
+        <!--
+          v1 FAQ copy is hardcoded below. To edit later, the owner can change
+          this text directly, or we can wire it to a Settings/FAQ tab later.
+          (See ADMIN_GUIDE.md.)
+        -->
+        <details class="faq-item" open>
+          <summary>How do I receive my materials after paying?</summary>
+          <div class="faq-body">
+            <p class="mb-0">After your payment is confirmed, we email your download link to the address you used to pay — usually within a few hours. Materials are shared manually, so please be patient and check your spam / promotions folder if you don't see it.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>What payment methods do you accept?</summary>
+          <div class="faq-body">
+            <p class="mb-0">We accept <strong>GCash</strong> and <strong>QR Ph</strong> only, through a secure HitPay payment page. We do not accept credit or debit cards in this version, and we never see or store your payment details.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>How do quiz access codes work?</summary>
+          <div class="faq-body">
+            <p>When you buy a quiz pack, we email you an access code (for example <strong>ARCH-7F3K</strong>). Go to the <a href="quiz.html">quiz page</a>, enter the quiz code (like <strong>structural-1</strong>) along with your access code, and your questions unlock.</p>
+            <p class="mb-0">Your score and full explanations appear immediately after you submit. Correct answers are never sent to your device until you submit, so the quiz stays a fair test.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Do codes expire?</summary>
+          <div class="faq-body">
+            <p class="mb-0">Yes. Each code has an expiry date and may have a usage limit. If your code has expired or stopped working, email us and we'll sort it out.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>What's your refund policy?</summary>
+          <div class="faq-body">
+            <p class="mb-0">Because materials and quizzes are digital and delivered immediately on request, sales are generally final. If something went wrong with your order or you were charged incorrectly, contact us and we'll make it right.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Can I use my materials and quizzes on my phone?</summary>
+          <div class="faq-body">
+            <p class="mb-0">Yes. The whole site, including the quizzes, is designed mobile-first and works smoothly on phones. Review materials are PDF/PowerPoint files you can open on any device.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>I bought the wrong pack / didn't get my email. What do I do?</summary>
+          <div class="faq-body">
+            <p class="mb-0">No problem — just email us at <a data-contact-email href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a> with the email address you paid with, and we'll help you out.</p>
+          </div>
+        </details>
+
+        <div class="card center" style="margin-top:2rem">
+          <h3 class="mb-0">Still have a question?</h3>
+          <p class="desc">We're happy to help. Email us and we'll get back to you.</p>
+          <p class="mb-0"><a class="btn btn--primary btn--lg" data-contact-email href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <p class="brand" style="color:#fff"><span data-brand>ArchPrep PH</span></p>
+        <p>Affordable review materials and practice quizzes for the Philippine Architect Licensure Examination. Materials are delivered by email after purchase.</p>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="materials.html">Materials</a></li>
+          <li><a href="quizzes.html">Quizzes</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a data-contact-email href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container footer-note">
+      <p class="mb-0">© <span id="footer-year">2026</span> <span data-brand>ArchPrep PH</span>. Materials are delivered manually by email after purchase. Payments handled securely by HitPay (GCash / QR Ph).</p>
+    </div>
+  </footer>
+
+  <script type="module" src="js/config-loader.js"></script>
+</body>
+</html>

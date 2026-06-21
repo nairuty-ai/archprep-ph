@@ -1,0 +1,28 @@
+IMAGE: og-cover.jpg
+USED ON: index.html — social share preview (Open Graph / Twitter card image
+         shown when the site link is shared on Messenger, Facebook, etc.)
+PURPOSE: Make shared links look professional and on-brand. Will usually be seen
+         small, so keep it simple and high-contrast. The brand name and tagline
+         are added by the platform / can be overlaid later, so leave clean space.
+ASPECT RATIO: 1.91:1   RECOMMENDED SIZE: 1200 x 630 px
+STYLE: Clean, minimal, architectural. Muted warm palette matching the site
+       (ink #1B2430, terracotta #C2703D accent, warm off-white #F7F5F0). More
+       graphic/editorial than busy photography so it survives small thumbnails.
+SUBJECT & COMPOSITION: A simple, elegant architectural composition — e.g. a
+       soft-focus modern building façade or a clean drafting-desk flat-lay
+       (plans, triangle, pencil) on a warm off-white surface, shot from above
+       or straight on. Centre-weighted with calm negative space around the
+       middle so a short title could be overlaid later. A single terracotta
+       accent (a folder, a line, an object) ties it to the brand.
+MOOD / LIGHTING: Calm, premium, trustworthy; even soft light, no harsh shadows.
+AVOID: text or words in the image, logos, watermarks, distorted hands, clutter,
+       busy edges, generic tech-blue tones, low contrast.
+
+PROMPT (paste this into Nano Banana):
+Minimal premium architectural flat-lay photographed straight from above on a
+warm off-white surface, neatly arranged rolled plans, a drafting triangle and a
+pencil with a single warm terracotta folder as the accent, calm even soft light
+with no harsh shadows, muted palette of deep ink navy, warm terracotta and soft
+off-white, lots of clean negative space in the centre for an overlaid title,
+elegant editorial and trustworthy mood, no text, no logos, no watermarks,
+1.91:1 aspect ratio.

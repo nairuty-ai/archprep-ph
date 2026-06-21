@@ -1,0 +1,17 @@
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build brief / spec source (not part of the deployed website)
+kiro_build_spec.md
+kiro_build_spec.txt
+Kiro_Build_Spec.docx
+
+# Node (not used now, but safe to ignore if ever added)
+node_modules/
+
+# Temp/scratch files
+_*.py
+_*.js

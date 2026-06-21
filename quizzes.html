@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Practice Quizzes — ArchPrep PH</title>
+  <meta name="description" content="Exam-style practice quizzes and full mock tests for the Architect Licensure Exam. Buy per subject or as a bundle, then unlock with your access code." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="config.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="announce" class="announce" hidden></div>
+
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+        </span>
+        <span data-brand>ArchPrep PH</span>
+      </a>
+      <nav aria-label="Primary">
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="materials.html">Materials</a></li>
+          <li><a href="quizzes.html" aria-current="page">Quizzes</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </nav>
+      <div class="nav-actions">
+        <a class="btn btn--primary" href="quiz.html">Enter your code</a>
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="mobile-menu" id="mobile-menu">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="materials.html">Materials</a></li>
+        <li><a href="quizzes.html">Quizzes</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page-head">
+      <div class="container">
+        <p class="eyebrow">Practice quizzes</p>
+        <h1>Quiz packs &amp; mock tests</h1>
+        <p class="lead">Per-subject practice quizzes and full mixed-subject mock tests that simulate real exam conditions. Buy a pack, then unlock it with the access code we email you.</p>
+        <p style="margin-top:1rem"><a class="btn btn--secondary btn--lg" href="quiz.html">Already purchased? Enter your code →</a></p>
+      </div>
+    </section>
+
+    <section class="section--tight">
+      <div class="container">
+        <div id="quizzes-list"></div>
+      </div>
+    </section>
+
+    <section class="section--tight">
+      <div class="container">
+        <div class="card" style="border-style:dashed">
+          <h3 class="mb-0">How quiz access works</h3>
+          <p class="desc mb-0">After you pay for a quiz pack, we email you an access code (for example <strong>ARCH-7F3K</strong>). Go to the quiz page, enter the quiz code (like <strong>structural-1</strong>) and your access code, and your questions unlock. Your score and full explanations appear right after you submit.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <p class="brand" style="color:#fff"><span data-brand>ArchPrep PH</span></p>
+        <p>Affordable review materials and practice quizzes for the Philippine Architect Licensure Examination. Materials are delivered by email after purchase.</p>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="materials.html">Materials</a></li>
+          <li><a href="quizzes.html">Quizzes</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a data-contact-email href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container footer-note">
+      <p class="mb-0">© <span id="footer-year">2026</span> <span data-brand>ArchPrep PH</span>. Materials are delivered manually by email after purchase. Payments handled securely by HitPay (GCash / QR Ph).</p>
+    </div>
+  </footer>
+
+  <script type="module" src="js/config-loader.js"></script>
+  <script type="module">
+    import { initQuizzes } from "./js/catalogue.js";
+    initQuizzes(document.getElementById("quizzes-list"));
+  </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+IMAGE: hero-architecture.jpg
+USED ON: index.html — landing page hero (right-hand media panel)
+PURPOSE: Convey a calm, aspirational, "serious study resource" feeling tied to
+         architecture and the licensure journey. It sits beside the headline,
+         so it must read well at a glance and not fight the overlaid text.
+ASPECT RATIO: 16:9   RECOMMENDED SIZE: 1600 x 900 px
+STYLE: Clean editorial architectural photography, natural soft light, muted
+       warm tones that match the site palette (ink #1B2430, warm terracotta
+       accent #C2703D, warm off-white background #F7F5F0). Real, grounded,
+       not glossy or stocky. Subtle film-like grain is fine.
+SUBJECT & COMPOSITION: A young Filipino architecture graduate at a tidy wooden
+       desk in soft morning light, reviewing rolled architectural drawings and
+       a scale ruler, a small model or drafting triangle nearby. Shallow depth
+       of field, focal point on the hands/plans. Frame so the LEFT and TOP have
+       calm, uncluttered negative space (a softly lit wall or window) where a
+       headline could overlay. Warm, restrained colour grade.
+MOOD / LIGHTING: Calm, focused, aspirational; soft natural morning light from a
+       window, gentle shadows, no harsh highlights.
+AVOID: any text or words in the image (we overlay text in HTML), logos,
+       watermarks, distorted hands or fingers, cluttered busy backgrounds,
+       neon or generic tech-blue tones, low-contrast areas where light text
+       would sit (keep the top-left clean and mid-toned).
+
+PROMPT (paste this into Nano Banana):
+Clean editorial architectural photograph of a young Filipino architecture
+graduate working at a tidy light-wood desk in soft morning light, calmly
+reviewing rolled architectural drawings with a scale ruler and a small drafting
+triangle beside a simple study model, shallow depth of field with the focus on
+the hands and the plans, warm muted colour palette of deep ink navy, warm
+terracotta and soft off-white, gentle natural window light with soft shadows,
+realistic and grounded with subtle fine grain, generous calm negative space in
+the upper-left for overlaid text, no text, no logos, no watermarks, natural
+correct hands, 16:9 aspect ratio.
