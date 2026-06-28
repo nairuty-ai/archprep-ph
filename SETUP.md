@@ -174,3 +174,65 @@ everywhere in one place:
 That's it — your platform is live. For everyday tasks (adding a product, adding
 quiz questions, issuing a code after a sale), see
 **[`ADMIN_GUIDE.md`](ADMIN_GUIDE.md)**.
+
+---
+
+## 7. Admin portal setup (added)
+
+The site now has a password-protected **admin portal** at `admin.html` (open
+`https://YOUR-SITE/admin.html`) so you can manage quizzes, questions, products,
+access codes, and settings through forms — no Sheet editing. Set it up once:
+
+### 7a. Update the backend code
+
+1. Open your Mission Control Sheet → **Extensions → Apps Script**.
+2. Replace the contents of `Code.gs` with the latest `apps-script/Code.gs` from
+   this project (it now includes the admin endpoints). Save.
+3. Open `Setup.gs` and replace it with the latest version too (it seeds the new
+   columns for fresh Sheets). Save.
+
+### 7b. Set your admin username and password (once)
+
+1. In the Apps Script editor, open the function dropdown and pick
+   **`setupAdminCredential`**. You can't pass arguments from the dropdown, so
+   instead add a tiny temporary runner, OR run it from the editor's console:
+   - Easiest: temporarily add this function, Save, run it once, then delete it:
+     ```js
+     function runOnce() { setupAdminCredential('admin', 'ArchPrep!2026'); }
+     ```
+   - Pick **`runOnce`** in the dropdown → **Run** → authorise if asked.
+2. This stores a **salted SHA-256 hash** of your password in Script Properties
+   (never the plaintext, never in the Sheet). **Delete the `runOnce` function**
+   afterwards so the password isn't left in the editor.
+3. To change the password later, repeat with a new password.
+
+> The password is never stored in code, the Sheet, or the front-end — only a
+> salted hash in server-side Script Properties.
+
+### 7c. Re-deploy as a NEW VERSION (important)
+
+Adding endpoints does **not** go live until you redeploy a new version:
+
+- **Deploy → Manage deployments → ✏️ (edit) → Version: New version → Deploy.**
+
+This keeps the same `/exec` URL, so you don't change `config.js`. (If you skip
+this, the portal will get "Unknown action" errors because the old code is still
+being served.)
+
+### 7d. New Sheet columns (auto-added)
+
+The admin portal uses three new columns. **You don't have to add them by hand** —
+the portal adds any that are missing the first time you save:
+
+- `Quizzes` tab: **`timer_minutes`** (per-quiz countdown; 0 = no timer).
+- `Products` tab: **`unlock_scope`** (which quizzes a quiz-pack product unlocks,
+  e.g. `structural` or `all`) and **`drive_note`** (a fulfilment note for
+  materials).
+
+(If you build a fresh Sheet with the latest `Setup.gs`, they're already there.)
+
+### 7e. Log in
+
+Open `https://YOUR-SITE/admin.html`, log in with the username/password you set,
+and you're in. The portal auto-logs-out after 8 hours, and locks out after 5
+failed attempts for 15 minutes.

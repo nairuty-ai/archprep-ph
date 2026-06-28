@@ -140,7 +140,7 @@ async function loadQuiz() {
     state.quiz = quiz;
     state.answers = {};
     state.index = 0;
-    startTimerIfMock();
+    startTimerIfNeeded();
     renderQuestion();
   } catch (err) {
     renderError(root, err.message || "We couldn't load the quiz. Please try again.", () => loadQuiz());
@@ -169,7 +169,7 @@ function renderQuestion() {
   }});
   bar.appendChild(el("span", { attrs: { style: `width:${((state.index + 1) / total) * 100}%` } }));
   progressRow.appendChild(bar);
-  if (isMock()) {
+  if (hasTimer()) {
     progressRow.appendChild(el("span", { class: "timer", attrs: { id: "timer", "aria-live": "polite" },
       text: formatTime(state.remaining) }));
   }
@@ -384,14 +384,24 @@ function labelFor(q, key) {
 /* Mock-test timer (optional, Section 13.4)                            */
 /* ------------------------------------------------------------------ */
 
-function isMock() {
-  return typeof state.quizId === "string" && /^mock/i.test(state.quizId)
-    && Number(CONFIG.MOCK_TEST_MINUTES) > 0;
+function timerMinutes_() {
+  // Per-quiz timer from the API (Quizzes tab). Fallback: legacy mock-* packs
+  // use CONFIG.MOCK_TEST_MINUTES; everything else has no timer.
+  const fromQuiz = state.quiz ? Number(state.quiz.timer_minutes) : 0;
+  if (isFinite(fromQuiz) && fromQuiz > 0) return fromQuiz;
+  if (typeof state.quizId === "string" && /^mock/i.test(state.quizId)) {
+    const fb = Number(CONFIG.MOCK_TEST_MINUTES);
+    return isFinite(fb) && fb > 0 ? fb : 0;
+  }
+  return 0;
 }
 
-function startTimerIfMock() {
-  if (!isMock()) return;
-  state.remaining = Number(CONFIG.MOCK_TEST_MINUTES) * 60;
+function hasTimer() { return timerMinutes_() > 0; }
+
+function startTimerIfNeeded() {
+  const mins = timerMinutes_();
+  if (mins <= 0) return;
+  state.remaining = mins * 60;
   stopTimer();
   state.timer = setInterval(() => {
     state.remaining--;

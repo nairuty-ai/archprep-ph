@@ -52,14 +52,41 @@ export function isConfigured() {
 
 function buildUrl(params) {
   const base = CONFIG.APPS_SCRIPT_URL.trim();
-  const usp = new URLSearchParams(params);
+  // Cache-buster so admin edits to the Sheet reflect promptly on the public site.
+  const usp = new URLSearchParams({ ...params, _: Date.now() });
   const sep = base.includes("?") ? "&" : "?";
   return base + sep + usp.toString();
 }
 
-/** GET ?action=... — returns parsed JSON. Throws on network/parse failure. */
+/** GET ?action=... — returns parsed JSON. Throws on network/parse failure.
+ *  Cacheable catalogue/settings reads are served from a short-lived
+ *  sessionStorage cache so navigating between pages doesn't refetch. */
+const CLIENT_CACHEABLE = { getSettings: 1, getProducts: 1, getQuizList: 1 };
+const CLIENT_CACHE_TTL = 30000; // 30s, matches the server-side cache window
+
+function clientCacheGet(action) {
+  try {
+    const raw = sessionStorage.getItem("apicache:" + action);
+    if (!raw) return null;
+    const rec = JSON.parse(raw);
+    if (Date.now() - rec.t > CLIENT_CACHE_TTL) return null;
+    return rec.v;
+  } catch (e) { return null; }
+}
+function clientCacheSet(action, value) {
+  try { sessionStorage.setItem("apicache:" + action, JSON.stringify({ t: Date.now(), v: value })); }
+  catch (e) {}
+}
+
 export async function apiGet(action, params = {}) {
   if (!isConfigured()) throw new ApiNotConfigured();
+
+  const cacheable = CLIENT_CACHEABLE[action] && Object.keys(params).length === 0;
+  if (cacheable) {
+    const hit = clientCacheGet(action);
+    if (hit != null) return hit;
+  }
+
   const url = buildUrl({ action, ...params });
   let res;
   try {
@@ -67,7 +94,9 @@ export async function apiGet(action, params = {}) {
   } catch (e) {
     throw new ApiError("network", "We couldn't reach the server. Please check your connection and try again.");
   }
-  return parseJsonResponse(res);
+  const data = await parseJsonResponse(res);
+  if (cacheable) clientCacheSet(action, data);
+  return data;
 }
 
 /** POST action — body is a JSON string sent as text/plain (CORS-safe). */

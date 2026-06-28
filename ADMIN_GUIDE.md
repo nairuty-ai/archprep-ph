@@ -218,3 +218,68 @@ quizzes are being used. You don't need to edit this tab — just read it.
 - **Nothing loads / "can't reach the server".** Usually the backend URL in
   `config.js` is missing/wrong, or the Apps Script "Who has access" isn't set to
   **Anyone**. See [`SETUP.md`](SETUP.md) Parts 2–3.
+
+---
+
+## Using the Admin Portal (the easy way — no Sheet editing)
+
+You now have a password-protected admin portal. It does everything described
+above, but through forms. Open **`https://YOUR-SITE/admin.html`** (or add
+`/admin.html` to your site address). Everything you save here goes **live on the
+public site automatically** — no redeploy needed.
+
+> First-time setup (username/password + backend update) is in `SETUP.md`
+> Section 7. After that, just log in.
+
+### Logging in
+Enter your username and password. You stay logged in for 8 hours, then it asks
+you to log in again. After 5 wrong attempts it locks for 15 minutes.
+
+### The four sections
+Across the top: **Quizzes · Products · Access Codes · Settings.**
+
+### Build a quiz and its questions
+1. **Quizzes → + New quiz.** Enter a **Quiz ID** (lowercase, e.g. `structural-2`),
+   a title, the subject, and a **timer in minutes** (0 = no timer).
+   - Tip: keep a shared prefix so one subject code unlocks all its quizzes
+     (e.g. `structural-1`, `structural-2`, `structural-3` are all unlocked by a
+     code with scope `structural`).
+2. Click **Create & add questions.** (A quiz is saved once it has its first
+   question.)
+3. For each question: type the **question text**, fill **2–4 options**, click the
+   **radio button** next to the correct option, and add an **explanation** (shown
+   to the student after they submit). Save.
+4. Use **↑ / ↓** to reorder, **Edit** to change, **Delete** to remove. Deleting
+   renumbers the rest automatically.
+
+### Create and price a product
+1. **Products → + New product.**
+2. Choose **Type**: *Material* (a download you fulfil from Drive) or *Quiz pack*
+   (a sellable bundle that unlocks quizzes).
+3. Fill subject, title, description, **price (PHP)**, and the **HitPay link**.
+4. **Published / Draft toggle:** Published shows it on the public site; Draft
+   hides it.
+5. For a **quiz pack**, set **Unlock scope** (e.g. `structural` or `all`) so you
+   know which quizzes it unlocks — this pre-fills the code form later. For a
+   **material**, use **Drive note** to record which Drive file fulfils it.
+
+### Generate and send an access code (after a sale)
+1. **Access Codes → + New code.**
+2. Set the **scope** (a quiz id like `structural-1`, a subject prefix like
+   `structural`, or `all`), an **expiry date**, optional **max uses** (blank =
+   unlimited), and a **note** (e.g. the buyer's email).
+3. Click **Generate code.** The portal shows the new code with a **Copy** button
+   and a **ready-to-send email** you can copy and paste to the buyer.
+4. Later you can **Disable/Enable** or **Delete** any code from the list.
+
+### Edit site text
+**Settings** lets you change the brand name, contact email, announcement banner
+(blank = hidden), and hero headline/subhead. Save, and the public site updates on
+its next load.
+
+### Good to know
+- Every change is **live immediately** on the public site (it reads the same
+  Sheet).
+- Deleting anything asks you to confirm first.
+- You can still edit the Sheet directly if you ever prefer to — the portal and
+  the Sheet are just two views of the same data.

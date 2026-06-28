@@ -135,3 +135,48 @@ way to confirm the Sheet is wired up before deploying.
   Anyone**, and that `config.js` uses the `/exec` URL (not `/dev`).
 - **Changes to `Code.gs` not taking effect** — you must **re-deploy a new
   version** (Section 3); saving alone updates only the `/dev` test URL.
+
+---
+
+## 8. Admin portal endpoints (added)
+
+The script now also powers the admin portal (`admin.html`). These endpoints are
+**POST-only** (text/plain JSON body) and — except `adminLogin` — require a valid
+session token.
+
+### One-time credential setup
+Run `setupAdminCredential('admin', 'your-password')` **once** from the editor
+(see `SETUP.md` Section 7). It stores `{salt, hash}` (salted SHA-256) in Script
+Properties — never plaintext, never in the Sheet. It is an editor-run function
+and is **not** reachable as a web action.
+
+### Auth model
+- `adminLogin {username, password}` → `{ok, token, expires}` (8h). Generic error
+  on failure; 5 failures → 15-minute lockout per username.
+- Every other admin action goes through `dispatchAdmin_`, which calls
+  `requireAuth_` / `validateToken_` **first**. Missing/invalid/expired token →
+  `{ok:false, error:"session_expired"}` and **no** action runs. Protection is
+  this server-side check, not the secrecy of the `/admin` page.
+- `adminLogout {token}` invalidates the token.
+
+### Admin actions (all token-gated)
+`adminListQuizzes`, `adminCreateQuiz`, `adminUpdateQuiz`, `adminDeleteQuiz`,
+`adminListQuestions` (returns answers — admin only), `adminAddQuestion`,
+`adminUpdateQuestion`, `adminDeleteQuestion`, `adminReorderQuestions`,
+`adminListProducts`, `adminCreateProduct`, `adminUpdateProduct`,
+`adminDeleteProduct`, `adminListCodes`, `adminCreateCode`, `adminUpdateCode`,
+`adminDeleteCode`, `adminGetSettings`, `adminUpdateSettings`.
+
+### New columns (auto-created on first admin write)
+- `Quizzes`: `timer_minutes` (per-quiz countdown; included now by the public
+  `getQuizList`/`getQuiz`).
+- `Products`: `unlock_scope`, `drive_note` (never returned by public endpoints).
+
+### Preserved guarantee
+The public `getQuiz` still returns **no** `correct_option` and **no**
+`explanation`. Correct answers leave the server only via the token-gated
+`adminListQuestions` and via `gradeQuiz` (after a valid submission).
+
+### Redeploy after changes
+After pasting updated `Code.gs`, you **must** redeploy a new version
+(Deploy → Manage deployments → New version) for the admin endpoints to go live.

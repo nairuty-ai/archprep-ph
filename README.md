@@ -95,10 +95,30 @@ These reasonable defaults were chosen where the spec allowed a choice:
 - **Access-code scope** supports `all`, an exact quiz id, or a subject prefix
   (e.g. `structural` unlocks `structural-1`, `structural-2`, …).
 
+## Admin portal (added)
+
+There is now a password-protected **admin portal** at `admin.html` (e.g.
+`/admin`) so the owner manages quizzes, questions, products, access codes, and
+site settings through forms instead of editing the Sheet by hand. Changes save
+to the same Sheet the public site reads, so they go live with no redeploy.
+
+- One admin login only (set once via `setupAdminCredential` in the Apps Script
+  editor). Auth is enforced **server-side** on every admin request with a
+  session token — see `apps-script/APPS_SCRIPT_README.md` and `SETUP.md`.
+- Per-quiz timers now live in the `Quizzes` tab (`timer_minutes` column).
+- Setup and walkthrough: `SETUP.md` (admin setup) and `ADMIN_GUIDE.md` (daily use).
+
+**Student login is intentionally NOT built (deferred to phase 2).** Reason:
+there is no payment-API integration, so purchases can't be auto-linked to
+accounts; access codes already gate quizzes; and storing student passwords would
+create exactly the data-leak liability this project avoids. The only login in
+the system is the single admin login.
+
 ## What this project deliberately does NOT do (v1 out of scope)
 
-No user accounts / login, no on-site card payments, no HitPay API integration,
-no automated delivery, no paid hosting/database/services, and the agent did not
+No **student** accounts / student login / student password storage (phase-2
+item, see above), no on-site card payments, no HitPay API integration, no
+automated delivery, no paid hosting/database/services, and the agent did not
 generate real photos (placeholders + prompts are provided instead). See the
 build spec's Sections 2 and 20.
 

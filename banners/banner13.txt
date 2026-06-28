@@ -1,0 +1,20 @@
+IMAGE: banner13.jpg
+USED ON: Home page promotional carousel (one slide)
+PURPOSE: Testimonial-style success message
+ASPECT RATIO: 16:5   RECOMMENDED SIZE: 1600 x 500 px (also looks fine cropped on mobile)
+STYLE: Clean, premium editorial architectural photography or tasteful illustration,
+       natural soft light, muted warm tones matching the site palette (ink #1B2430,
+       warm terracotta accent #C2703D, warm off-white #F7F5F0). Looks like a serious
+       study brand, not a flashy sale flyer.
+SUBJECT & COMPOSITION: a graduate in toga holding a rolled diploma against a clean architectural backdrop, proud and hopeful. Keep the LEFT THIRD calm and uncluttered (mid-toned)
+       as negative space so promo text can be overlaid there later. Balanced, not busy.
+MOOD / LIGHTING: Calm, aspirational, trustworthy; soft directional light.
+AVOID: text or words in the image (you will add any promo text yourself in a tool
+       like Canva), logos, watermarks, distorted hands, cluttered edges, harsh neon
+       or generic tech-blue colours, low-contrast areas where overlaid text would sit.
+
+PROMPT (paste this into Nano Banana):
+a graduate in toga holding a rolled diploma against a clean architectural backdrop, proud and hopeful, clean premium editorial architectural look, soft natural light, muted warm
+palette of deep ink navy, warm terracotta and soft off-white, calm uncluttered
+negative space on the left third for overlaid text, aspirational and trustworthy mood,
+no text, no logos, no watermarks, 16:5 aspect ratio.
