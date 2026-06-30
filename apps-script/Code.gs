@@ -28,6 +28,7 @@ var TAB_QUIZZES     = 'Quizzes';
 var TAB_ACCESSCODES = 'AccessCodes';
 var TAB_SETTINGS    = 'Settings';
 var TAB_ATTEMPTS    = 'Attempts';
+var TAB_REQUESTS    = 'Requests';   // purchase inbox: email captured at checkout
 
 /* ===========================================================================
  * HTTP entry points
@@ -64,6 +65,9 @@ function handleRequest(e, method) {
       case 'validateCode': return jsonOut(validateCodeEndpoint_(params.code, params.scope));
       case 'gradeQuiz':    return jsonOut(gradeQuiz_(body));
 
+      /* ---- Public: capture buyer email at checkout (no token) ---- */
+      case 'requestAccess': return jsonOut(requestAccess_(body));
+
       /* ---- Admin auth (adminLogin is the only admin action without a token) ---- */
       case 'adminLogin':   return jsonOut(adminLogin_(body));
       case 'adminLogout':  return jsonOut(adminLogout_(body));
@@ -86,6 +90,9 @@ function handleRequest(e, method) {
       case 'adminCreateCode':
       case 'adminUpdateCode':
       case 'adminDeleteCode':
+      case 'adminListRequests':
+      case 'adminFulfillRequest':
+      case 'adminDeleteRequest':
       case 'adminGetSettings':
       case 'adminUpdateSettings':
         return jsonOut(dispatchAdmin_(action, body));
@@ -376,8 +383,14 @@ function validateCode_(code, quizId, forGrading) {
     return { ok: false, error: 'We couldn\'t find that access code. Please check the code from your email, or contact us.' };
   }
 
-  // Status
-  if (String(match.status).trim().toLowerCase() === 'disabled') {
+  // Status: only "active" codes work. "pending" (awaiting admin activation
+  // after payment) and "disabled" are rejected. Blank is treated as active
+  // for backward compatibility with older rows.
+  var st = String(match.status).trim().toLowerCase();
+  if (st === 'pending') {
+    return { ok: false, error: 'This code isn\'t active yet. If you\'ve already paid, please wait for our confirmation email or contact us.' };
+  }
+  if (st === 'disabled') {
     return { ok: false, error: 'This access code has been disabled. Please contact us if you think this is a mistake.' };
   }
 
@@ -692,6 +705,9 @@ function runAdminAction_(action, body) {
     case 'adminCreateCode':       return adminCreateCode_(body);
     case 'adminUpdateCode':       return adminUpdateCode_(body);
     case 'adminDeleteCode':       return adminDeleteCode_(body);
+    case 'adminListRequests':     return adminListRequests_(body);
+    case 'adminFulfillRequest':   return adminFulfillRequest_(body);
+    case 'adminDeleteRequest':    return adminDeleteRequest_(body);
     case 'adminGetSettings':      return adminGetSettings_(body);
     case 'adminUpdateSettings':   return adminUpdateSettings_(body);
     default: return { ok: false, error: 'Unknown admin action.' };
@@ -1141,6 +1157,7 @@ function adminDeleteProduct_(body) {
  * ======================================================================== */
 
 function adminListCodes_() {
+  ensureColumns_(TAB_ACCESSCODES, ['email']);
   var t = readTable_(TAB_ACCESSCODES, [
     'code', 'scope', 'expiry_date', 'max_uses', 'uses_count', 'status', 'notes'
   ]);
@@ -1148,7 +1165,7 @@ function adminListCodes_() {
     return {
       code: row.code, scope: row.scope, expiry_date: row.expiry_date,
       max_uses: row.max_uses, uses_count: toNum_(row.uses_count, 0),
-      status: row.status || 'active', notes: row.notes || ''
+      status: row.status || 'active', notes: row.notes || '', email: row.email || ''
     };
   });
   return { ok: true, codes: codes };
@@ -1219,4 +1236,115 @@ function adminUpdateSettings_(body) {
 function runOnce() {
   setupAdminCredential('admin', 'ArchPrep!2026');
   PropertiesService.getScriptProperties().deleteProperty('lock:admin');
+}
+
+/* ===========================================================================
+ * Purchase / access-request flow (email captured at checkout)
+ * ---------------------------------------------------------------------------
+ * NOTE: there is no payment-API in v1, so payment cannot be auto-detected.
+ * requestAccess records the buyer's email at checkout and (for quiz packs)
+ * creates a PENDING code (2 attempts, no date expiry). The admin confirms
+ * payment in HitPay, then activates and sends the code. Materials are logged
+ * with the email; the admin sets a date validity and fulfils via Drive.
+ * ======================================================================== */
+
+var REQUEST_HEADERS = ['request_id', 'timestamp', 'email', 'product_id', 'type',
+  'title', 'scope', 'code', 'valid_until', 'status'];
+
+function isEmail_(s) {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || '').trim());
+}
+
+/** PUBLIC: record a checkout email; for quizzes pre-create a pending code. */
+function requestAccess_(body) {
+  var email = String(body.email || '').trim();
+  var productId = String(body.product_id || '').trim();
+  if (!isEmail_(email)) return { ok: false, error: 'Please enter a valid email address.' };
+  if (!productId) return { ok: false, error: 'Missing product.' };
+
+  var found = findRow_(TAB_PRODUCTS, 'product_id', productId);
+  if (!found || !truthy_(found.row.active)) return { ok: false, error: 'That product isn\'t available right now.' };
+
+  var type = String(found.row.type || '').trim().toLowerCase();
+  var title = found.row.title || '';
+  var scope = String(found.row.unlock_scope || '').trim();
+  var code = '';
+
+  if (type === 'quiz') {
+    if (!scope) scope = slugify_(found.row.subject || '') || 'all';
+    code = genAccessCode_();
+    ensureColumns_(TAB_ACCESSCODES, ['email']);
+    appendRowObject_(TAB_ACCESSCODES, {
+      code: code, scope: scope, expiry_date: '', // quiz codes: NO date expiry
+      max_uses: 2, uses_count: 0, status: 'pending', notes: '', email: email
+    });
+  }
+  logRequest_(email, productId, type, title, scope, code);
+  return { ok: true, type: type };
+}
+
+function logRequest_(email, productId, type, title, scope, code) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(TAB_REQUESTS);
+  if (!sheet) { sheet = ss.insertSheet(TAB_REQUESTS); sheet.appendRow(REQUEST_HEADERS); }
+  var id = 'REQ-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 9000 + 1000);
+  sheet.appendRow([id, new Date(), email, productId, type, title, scope, code, '', 'pending']);
+  return id;
+}
+
+/* ---- Admin: purchase inbox ---- */
+
+function adminListRequests_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_REQUESTS)) return { ok: true, requests: [] };
+  var t = readTable_(TAB_REQUESTS, ['request_id', 'email', 'type', 'status']);
+  var rows = t.rows.map(function (r) {
+    return {
+      request_id: r.request_id, timestamp: r.timestamp, email: r.email,
+      product_id: r.product_id, type: r.type, title: r.title, scope: r.scope,
+      code: r.code || '', valid_until: r.valid_until || '', status: r.status || 'pending'
+    };
+  });
+  // newest first
+  rows.reverse();
+  return { ok: true, requests: rows };
+}
+
+/** Activate a quiz request's code (after payment), or set a material's
+ *  validity date; marks the request fulfilled either way. */
+function adminFulfillRequest_(body) {
+  var id = String(body.request_id || '').trim();
+  if (!id) return { ok: false, error: 'request_id is required.' };
+  var req = findRow_(TAB_REQUESTS, 'request_id', id);
+  if (!req) return { ok: false, error: 'Request not found.' };
+
+  var type = String(req.row.type || '').trim().toLowerCase();
+  if (type === 'quiz') {
+    var code = String(req.row.code || '').trim();
+    if (code) {
+      var cr = findRow_(TAB_ACCESSCODES, 'code', code);
+      if (cr) updateRowFields_(TAB_ACCESSCODES, cr.rowIndex, { status: 'active' });
+    }
+    updateRowFields_(TAB_REQUESTS, req.rowIndex, { status: 'fulfilled' });
+    return { ok: true, code: code };
+  }
+  // material: store the admin-chosen validity date and mark fulfilled
+  var validUntil = String(body.valid_until || '').trim();
+  updateRowFields_(TAB_REQUESTS, req.rowIndex, { valid_until: validUntil, status: 'fulfilled' });
+  return { ok: true };
+}
+
+function adminDeleteRequest_(body) {
+  var id = String(body.request_id || '').trim();
+  if (!id) return { ok: false, error: 'request_id is required.' };
+  var req = findRow_(TAB_REQUESTS, 'request_id', id);
+  if (!req) return { ok: false, error: 'Request not found.' };
+  // also remove a still-pending quiz code that was never activated
+  var code = String(req.row.code || '').trim();
+  if (code) {
+    var cr = findRow_(TAB_ACCESSCODES, 'code', code);
+    if (cr && String(cr.row.status).toLowerCase() === 'pending') deleteSheetRow_(TAB_ACCESSCODES, cr.rowIndex);
+  }
+  deleteSheetRow_(TAB_REQUESTS, req.rowIndex);
+  return { ok: true };
 }

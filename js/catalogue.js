@@ -4,7 +4,7 @@
  * ==========================================================================*/
 
 import {
-  el, peso, apiGet, isConfigured,
+  el, peso, apiGet, apiPost, isConfigured,
   renderLoading, renderError, renderEmpty, renderNotConfigured,
 } from "./ui.js";
 
@@ -153,11 +153,79 @@ function buyButton(p) {
         title: "Payment link not set yet" },
     });
   }
-  return el("a", {
+  const btn = el("button", {
     class: "btn btn--primary btn--block",
     text: "Buy on GCash / QR Ph",
-    attrs: { href: link, target: "_blank", rel: "noopener noreferrer" },
+    attrs: { type: "button" },
   });
+  btn.addEventListener("click", () => openCheckout(p, link));
+  return btn;
+}
+
+/* ---------------- Checkout: capture email, then open HitPay ---------------- */
+
+function openCheckout(p, link) {
+  const isQuiz = p.type === "quiz";
+  const backdrop = el("div", { class: "modal-backdrop" });
+  const modal = el("div", { class: "modal" });
+
+  modal.appendChild(el("h3", { text: p.title || "Complete your purchase" }));
+  modal.appendChild(el("p", { class: "muted", text:
+    isQuiz
+      ? "Enter your email to continue. After you pay, we'll email your quiz access code (good for 2 attempts)."
+      : "Enter your email to continue. After you pay, we'll email your material to this address." }));
+
+  const alert = el("div");
+  modal.appendChild(alert);
+
+  const field = el("div", { class: "field" });
+  field.appendChild(el("label", { text: "Your email", attrs: { for: "co-email" } }));
+  const input = el("input", { attrs: { type: "email", id: "co-email", placeholder: "you@example.com", autocomplete: "email", inputmode: "email" } });
+  field.appendChild(input);
+  modal.appendChild(field);
+
+  const actions = el("div", { class: "modal-actions" });
+  const cancel = el("button", { class: "btn btn--outline", text: "Cancel", attrs: { type: "button" } });
+  const go = el("button", { class: "btn btn--primary", text: "Continue to payment", attrs: { type: "button" } });
+  cancel.addEventListener("click", () => backdrop.remove());
+  actions.appendChild(cancel);
+  actions.appendChild(go);
+  modal.appendChild(actions);
+
+  const showErr = (msg) => { alert.replaceChildren(el("div", { class: "alert alert--error", text: msg, attrs: { role: "alert" } })); };
+
+  go.addEventListener("click", async () => {
+    const email = input.value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return showErr("Please enter a valid email address.");
+    go.disabled = true; go.textContent = "Processing…";
+    let res;
+    try { res = await apiPost("requestAccess", { email, product_id: p.product_id }); }
+    catch (e) { res = { ok: false }; }
+    if (res && res.ok) {
+      // Open HitPay payment page, then show a clear confirmation.
+      window.open(link, "_blank", "noopener");
+      modal.replaceChildren(
+        el("h3", { text: "Almost there!" }),
+        el("p", { text: "We've opened the secure GCash / QR Ph payment page in a new tab. Complete your payment there." }),
+        el("div", { class: "alert alert--info", attrs: { role: "status" }, text:
+          isQuiz
+            ? "Once we confirm your payment, we'll email your access code to " + email + ". It works for 2 attempts."
+            : "Once we confirm your payment, we'll email your material to " + email + "." }),
+        el("div", { class: "modal-actions", children: [
+          el("a", { class: "btn btn--outline", text: "View details", attrs: { href: "thank-you.html" } }),
+          (function () { const b = el("button", { class: "btn btn--primary", text: "Done", attrs: { type: "button" } }); b.addEventListener("click", () => backdrop.remove()); return b; })(),
+        ]})
+      );
+    } else {
+      go.disabled = false; go.textContent = "Continue to payment";
+      showErr((res && res.error) || "We couldn't start your checkout. Please try again, or contact us.");
+    }
+  });
+
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.remove(); });
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
+  input.focus();
 }
 
 function num(v) { const n = Number(v); return isFinite(n) ? n : 9999; }

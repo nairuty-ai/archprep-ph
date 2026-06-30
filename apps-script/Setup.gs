@@ -28,6 +28,7 @@ function setupSheet() {
   writeTab_(ss, 'AccessCodes', ACCESSCODES_SEED_());
   writeTab_(ss, 'Settings', SETTINGS_SEED_());
   writeTab_(ss, 'Attempts', [['timestamp', 'code', 'quiz_id', 'score', 'total']]);
+  writeTab_(ss, 'Requests', [['request_id', 'timestamp', 'email', 'product_id', 'type', 'title', 'scope', 'code', 'valid_until', 'status']]);
 
   // Remove the default empty "Sheet1" if it's still there and unused.
   var def = ss.getSheetByName('Sheet1');
@@ -83,10 +84,10 @@ function QUIZZES_SEED_() {
 
 function ACCESSCODES_SEED_() {
   return [
-    ['code','scope','expiry_date','max_uses','uses_count','status','notes'],
-    ['ARCH-7F3K','structural-1','2027-12-31',3,0,'active','Sample code — unlocks only structural-1'],
-    ['ARCH-MOCK1','mock-1','2027-12-31','',0,'active','Sample code — unlocks mock-1, unlimited uses (max_uses blank)'],
-    ['ARCH-ALL9','all','2027-12-31',10,0,'active','Sample code — unlocks every quiz, up to 10 attempts']
+    ['code','scope','expiry_date','max_uses','uses_count','status','notes','email'],
+    ['ARCH-7F3K','structural-1','',2,0,'active','Sample code — 2 attempts, no date expiry',''],
+    ['ARCH-MOCK1','mock-1','',2,0,'active','Sample code — unlocks mock-1, 2 attempts',''],
+    ['ARCH-ALL9','all','2027-12-31',10,0,'active','Sample code — unlocks every quiz, up to 10 attempts','']
   ];
 }
 

@@ -11,10 +11,10 @@ const crypto = require("crypto");
 const DB = {};
 function seed() {
   DB.Products = [
-    ["product_id","type","subject","title","description","price_php","hitpay_link","active","sort_order"],
-    ["mat-structural","material","Structural Design","Structural Notes","desc",199,"https://h/x","TRUE",10],
-    ["quiz-structural","quiz","Structural Design","Structural Quiz Pack","unlocks structural-*",149,"REPLACE_ME","TRUE",50],
-    ["quiz-mock","quiz","All Subjects","Mock Series","unlocks mock-*",299,"REPLACE_ME","FALSE",60],
+    ["product_id","type","subject","title","description","price_php","hitpay_link","active","sort_order","unlock_scope","drive_note"],
+    ["mat-structural","material","Structural Design","Structural Notes","desc",199,"https://h/x","TRUE",10,"","Drive folder"],
+    ["quiz-structural","quiz","Structural Design","Structural Quiz Pack","unlocks structural-*",149,"REPLACE_ME","TRUE",50,"structural",""],
+    ["quiz-mock","quiz","All Subjects","Mock Series","unlocks mock-*",299,"REPLACE_ME","FALSE",60,"mock",""],
   ];
   DB.Quizzes = [
     ["quiz_id","quiz_title","subject","question_number","question_text","option_a","option_b","option_c","option_d","correct_option","explanation"],
@@ -219,6 +219,37 @@ check("new code unlocks structural-2 publicly", get({ action: "getQuiz", quizId:
 check("delete code", A("adminDeleteCode", { code: cc.code }).ok);
 check("update settings upsert", A("adminUpdateSettings", { key: "announcement_banner", value: "Sale!" }).ok);
 check("settings reflect via public getSettings", get({ action: "getSettings" }).announcement_banner === "Sale!");
+
+/* ============ Purchase / access-request flow ============ */
+console.log("Purchase flow (email capture -> pending code -> activate):");
+check("requestAccess rejects bad email", post("requestAccess", { email: "nope", product_id: "quiz-structural" }).ok === false);
+const rq = post("requestAccess", { email: "buyer@example.com", product_id: "quiz-structural" });
+check("requestAccess (quiz) ok", rq.ok === true && rq.type === "quiz");
+const pendingCode = DB.AccessCodes[DB.AccessCodes.length - 1];
+const pcCode = pendingCode[0];
+check("pending code created with email + max_uses 2 + no expiry",
+  pendingCode[3] === 2 && String(pendingCode[2]) === "" && pendingCode[5] === "pending" && pendingCode[7] === "buyer@example.com");
+check("PENDING code does NOT unlock the quiz (getQuiz)",
+  get({ action: "getQuiz", quizId: "structural-1", code: pcCode }).ok === false);
+const reqs = A("adminListRequests");
+check("admin sees the request with email", reqs.ok && reqs.requests.some((r) => r.email === "buyer@example.com" && r.type === "quiz"));
+const reqId = reqs.requests.find((r) => r.email === "buyer@example.com").request_id;
+check("fulfill activates the code", A("adminFulfillRequest", { request_id: reqId }).ok);
+check("ACTIVE code now unlocks the quiz", get({ action: "getQuiz", quizId: "structural-1", code: pcCode }).ok === true);
+// 2-attempt limit (no date expiry)
+check("attempt 1 grades", post("gradeQuiz", { quizId: "structural-1", code: pcCode, answers: { "1": "B" } }).ok === true);
+check("attempt 2 grades", post("gradeQuiz", { quizId: "structural-1", code: pcCode, answers: { "1": "B" } }).ok === true);
+check("attempt 3 REFUSED (max 2 uses)", post("gradeQuiz", { quizId: "structural-1", code: pcCode, answers: { "1": "B" } }).ok === false);
+
+console.log("Purchase flow (material -> logged, admin sets validity):");
+const rqm = post("requestAccess", { email: "matbuyer@example.com", product_id: "mat-structural" });
+check("requestAccess (material) ok, no code", rqm.ok && rqm.type === "material");
+check("material request has no access code created", !DB.AccessCodes.some((r) => r[7] === "matbuyer@example.com"));
+const mReqId = A("adminListRequests").requests.find((r) => r.email === "matbuyer@example.com").request_id;
+check("admin sets material valid_until", A("adminFulfillRequest", { request_id: mReqId, valid_until: "2026-12-31" }).ok);
+check("material request now fulfilled with date",
+  A("adminListRequests").requests.find((r) => r.request_id === mReqId).valid_until === "2026-12-31");
+check("delete request works", A("adminDeleteRequest", { request_id: mReqId }).ok);
 
 console.log(`\n=== ${pass} passed, ${fail} failed ===`);
 process.exit(fail ? 1 : 0);

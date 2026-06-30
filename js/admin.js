@@ -137,7 +137,7 @@ function showDashboard() {
   $("#dash-view").hidden = false;
   $("#who-user").textContent = sessionStorage.getItem(USER_KEY) || "admin";
   startExpiryCountdown();
-  selectTab("quizzes");
+  selectTab("requests");
 }
 
 function startExpiryCountdown() {
@@ -198,7 +198,8 @@ function initAuth() {
 function selectTab(name) {
   $$(".admin-tab").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.tab === name)));
   $$(".admin-panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + name));
-  if (name === "quizzes") renderQuizzes();
+  if (name === "requests") renderRequests();
+  else if (name === "quizzes") renderQuizzes();
   else if (name === "products") renderProducts();
   else if (name === "codes") renderCodes();
   else if (name === "settings") renderSettings();
@@ -775,4 +776,146 @@ async function renderSettings() {
   wrap.appendChild(sectionHead("Settings", null));
   wrap.appendChild(form);
   p.replaceChildren(wrap);
+}
+
+/* ============================================================================
+ * REQUESTS section — purchase inbox (emails captured at checkout).
+ * Quiz requests: confirm payment -> Activate (turns the pending 2-attempt
+ * code live) -> send the email snippet. Material requests: set a validity
+ * date you choose and mark fulfilled (delivery stays manual via Drive).
+ * ==========================================================================*/
+
+async function renderRequests() {
+  const p = panel("requests");
+  loadingState(p, "Loading purchase requests…");
+  const res = await adminPost("adminListRequests", {});
+  if (!res.ok) { p.replaceChildren(emptyState("Couldn't load requests", res.error || "Try again.")); return; }
+
+  const refresh = el("button", { class: "btn btn--outline btn--sm", text: "↻ Refresh" });
+  refresh.addEventListener("click", renderRequests);
+
+  const wrap = el("div");
+  wrap.appendChild(sectionHead("Purchase requests", refresh));
+  wrap.appendChild(el("p", { class: "muted", attrs: { style: "margin-top:-.5rem" }, text:
+    "When a student checks out, their email appears here. Confirm the payment in HitPay, then activate (quiz) or set a validity date (material)." }));
+
+  const reqs = res.requests || [];
+  const pending = reqs.filter((r) => r.status !== "fulfilled");
+  const done = reqs.filter((r) => r.status === "fulfilled");
+
+  if (!reqs.length) {
+    wrap.appendChild(emptyState("No requests yet", "Checkout requests from students will show up here."));
+  } else {
+    if (pending.length) {
+      wrap.appendChild(el("h3", { text: `Pending (${pending.length})` }));
+      const list = el("div", { class: "row-list" });
+      pending.forEach((r) => list.appendChild(requestRow(r)));
+      wrap.appendChild(list);
+    }
+    if (done.length) {
+      wrap.appendChild(el("h3", { attrs: { style: "margin-top:1.5rem" }, text: "Fulfilled" }));
+      const list2 = el("div", { class: "row-list" });
+      done.forEach((r) => list2.appendChild(requestRow(r)));
+      wrap.appendChild(list2);
+    }
+  }
+  p.replaceChildren(wrap);
+}
+
+function requestRow(r) {
+  const isQuiz = r.type === "quiz";
+  const fulfilled = r.status === "fulfilled";
+  const badge = fulfilled
+    ? el("span", { class: "badge pub", text: "Fulfilled" })
+    : el("span", { class: "badge draft", text: "Pending" });
+
+  const metaBits = [`${r.type} · ${r.title || r.product_id}`];
+  if (isQuiz && r.code) metaBits.push(`code ${r.code}`);
+  if (r.valid_until) metaBits.push(`valid until ${r.valid_until}`);
+
+  const main = el("div", { class: "row-main", children: [
+    el("h4", { children: [document.createTextNode(r.email + "  "), badge] }),
+    el("div", { class: "row-meta", text: metaBits.join(" · ") }),
+  ]});
+
+  const actions = el("div", { class: "row-actions" });
+
+  if (isQuiz && !fulfilled) {
+    const activate = el("button", { class: "btn btn--primary btn--sm", text: "Confirm payment & activate" });
+    activate.addEventListener("click", async () => {
+      if (!(await confirmDialog(`Activate the quiz code for ${r.email}? Do this only after you've confirmed their payment in HitPay.`, "Activate"))) return;
+      const res = await adminPost("adminFulfillRequest", { request_id: r.request_id });
+      if (res.ok) { showQuizDelivery(r); renderRequests(); }
+      else toast(res.error || "Activate failed.", "err");
+    });
+    actions.appendChild(activate);
+  }
+
+  if (!isQuiz && !fulfilled) {
+    // Material: pick a validity date, then fulfil.
+    const date = el("input", { attrs: { type: "date", style: "min-height:36px" } });
+    const fulfil = el("button", { class: "btn btn--primary btn--sm", text: "Set validity & mark sent" });
+    fulfil.addEventListener("click", async () => {
+      if (!date.value) return toast("Pick a validity date first.", "err");
+      const res = await adminPost("adminFulfillRequest", { request_id: r.request_id, valid_until: date.value });
+      if (res.ok) { toast("Marked fulfilled. Remember to share the Drive file with " + r.email); renderRequests(); }
+      else toast(res.error || "Failed.", "err");
+    });
+    actions.appendChild(date);
+    actions.appendChild(fulfil);
+  }
+
+  if (isQuiz && fulfilled && r.code) {
+    const resend = el("button", { class: "btn btn--outline btn--sm", text: "Show email" });
+    resend.addEventListener("click", () => showQuizDelivery(r));
+    actions.appendChild(resend);
+  }
+
+  const del = el("button", { class: "btn btn--danger btn--sm", text: "Delete" });
+  del.addEventListener("click", async () => {
+    if (!(await confirmDialog(`Delete this request from ${r.email}?` + (isQuiz && !fulfilled ? " Its un-activated code will also be removed." : "")))) return;
+    const res = await adminPost("adminDeleteRequest", { request_id: r.request_id });
+    if (res.ok) { toast("Request deleted."); renderRequests(); }
+    else toast(res.error || "Delete failed.", "err");
+  });
+  actions.appendChild(del);
+
+  return el("div", { class: "row-item", children: [main, actions] });
+}
+
+/* Show a ready-to-send email with the activated quiz code. */
+function showQuizDelivery(r) {
+  const root = $("#modal-root");
+  const backdrop = el("div", { class: "modal-backdrop" });
+  const modal = el("div", { class: "modal" });
+  modal.appendChild(el("h3", { text: "Send this to the buyer" }));
+  modal.appendChild(el("p", { class: "muted", text: `Email: ${r.email}` }));
+
+  const snippet =
+`Hi,
+
+Thank you for your purchase! Here is your quiz access:
+
+Quiz page: open the Quizzes page on our site and tap "Already purchased? Enter your code".
+Quiz to enter: ${r.scope}
+Access code: ${r.code}
+
+This code works for 2 attempts. Your score and full explanations appear right after you submit.
+
+Good luck with your review!`;
+  const ta = el("textarea");
+  ta.value = snippet; ta.style.width = "100%"; ta.style.minHeight = "180px"; ta.style.marginTop = ".5rem";
+  modal.appendChild(ta);
+
+  const actions = el("div", { class: "modal-actions" });
+  const copy = el("button", { class: "btn btn--secondary", text: "Copy email" });
+  copy.addEventListener("click", () => { ta.select(); if (navigator.clipboard) navigator.clipboard.writeText(ta.value); toast("Email copied."); });
+  const close = el("button", { class: "btn btn--outline", text: "Close" });
+  close.addEventListener("click", () => root.replaceChildren());
+  actions.appendChild(copy); actions.appendChild(close);
+  modal.appendChild(actions);
+
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) root.replaceChildren(); });
+  backdrop.appendChild(modal);
+  root.replaceChildren(backdrop);
 }

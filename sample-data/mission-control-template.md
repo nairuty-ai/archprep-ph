@@ -88,22 +88,26 @@ Headers (row 1), in this order:
 
 Headers (row 1), in this order:
 
-`code` | `scope` | `expiry_date` | `max_uses` | `uses_count` | `status` | `notes`
+`code` | `scope` | `expiry_date` | `max_uses` | `uses_count` | `status` | `notes` | `email`
 
-| code | scope | expiry_date | max_uses | uses_count | status | notes |
-|---|---|---|---|---|---|---|
-| ARCH-7F3K | structural-1 | 2027-12-31 | 3 | 0 | active | Sample code — unlocks only structural-1 |
-| ARCH-MOCK1 | mock-1 | 2027-12-31 |  | 0 | active | Sample code — unlocks mock-1, unlimited uses (max_uses blank) |
-| ARCH-ALL9 | all | 2027-12-31 | 10 | 0 | active | Sample code — unlocks every quiz, up to 10 attempts |
+| code | scope | expiry_date | max_uses | uses_count | status | notes | email |
+|---|---|---|---|---|---|---|---|
+| ARCH-7F3K | structural-1 |  | 2 | 0 | active | Sample code — 2 attempts, no date expiry |  |
+| ARCH-MOCK1 | mock-1 |  | 2 | 0 | active | Sample code — unlocks mock-1, 2 attempts |  |
+| ARCH-ALL9 | all | 2027-12-31 | 10 | 0 | active | Sample code — unlocks every quiz, up to 10 attempts |  |
 
 How `scope` works:
 - `all` → unlocks every quiz.
 - an exact quiz id (e.g. `structural-1`) → unlocks just that quiz.
 - a subject prefix (e.g. `structural`) → unlocks `structural-1`, `structural-2`, …
 - `expiry_date` is `YYYY-MM-DD`; the code works through the end of that day.
-- `max_uses` blank = unlimited. `uses_count` starts at `0`; the script increments
-  it on each graded submission.
-- `status` is `active` or `disabled`.
+  **Leave it blank for no date expiry** (this is how quiz codes work — they expire
+  by attempts, not by date).
+- `max_uses` blank = unlimited; quiz codes generated at checkout use `2`.
+  `uses_count` starts at `0`; the script increments it on each graded submission.
+- `status` is `active`, `disabled`, or `pending`. **Only `active` works** —
+  `pending` is a code awaiting admin activation after payment; `disabled` is off.
+- `email` (optional) records the buyer's email for codes created at checkout.
 
 ---
 
@@ -140,3 +144,26 @@ script will create it automatically on the first submission.
 | timestamp | code | quiz_id | score | total |
 |---|---|---|---|---|
 | _(auto-filled by the script)_ |  |  |  |  |
+
+---
+
+## Tab: `Requests`  (purchase inbox — created automatically)
+
+Captures the buyer's email at checkout so you know who bought what. You don't need
+to create or edit this by hand — the site appends a row when someone checks out,
+and the admin portal's **Requests** tab reads it. If the tab is missing, the script
+creates it on the first checkout.
+
+Headers (row 1), in this order:
+
+`request_id` | `timestamp` | `email` | `product_id` | `type` | `title` | `scope` | `code` | `valid_until` | `status`
+
+| request_id | timestamp | email | product_id | type | title | scope | code | valid_until | status |
+|---|---|---|---|---|---|---|---|---|---|
+| _(auto-filled at checkout)_ |  |  |  |  |  |  |  |  | pending |
+
+- For **quiz** purchases, `code` holds the pre-generated 2-attempt code (created as
+  `pending` in `AccessCodes`); the admin activates it after confirming payment.
+- For **material** purchases, the admin sets `valid_until` (a date they choose) when
+  fulfilling; delivery stays manual via Drive.
+- `status` is `pending` until the admin fulfils it, then `fulfilled`.

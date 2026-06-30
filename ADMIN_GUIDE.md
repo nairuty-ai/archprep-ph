@@ -283,3 +283,39 @@ its next load.
 - Deleting anything asks you to confirm first.
 - You can still edit the Sheet directly if you ever prefer to — the portal and
   the Sheet are just two views of the same data.
+
+---
+
+## Purchase requests (email capture at checkout)
+
+The site now asks each buyer for their **email** before sending them to GCash /
+QR Ph. That gives you a tidy inbox of who's buying what — no more guessing.
+
+> Important: there is no automatic payment detection (that would need a paid
+> payment API). You still confirm each payment in your HitPay dashboard. The site
+> just captures the email and prepares the code/record for you.
+
+### How a quiz sale works now
+1. Student clicks **Buy** on a quiz pack → enters their email → is sent to HitPay.
+2. In the admin portal, open the **Requests** tab. You'll see their email with a
+   **Pending** quiz request and a ready-made **access code** (2 attempts, no date
+   expiry).
+3. Check your **HitPay dashboard** that the payment arrived from that person.
+4. Click **Confirm payment & activate**. The code becomes active and a
+   ready-to-send email pops up — copy it and send it to the buyer.
+5. The code works for **2 attempts**, then stops working automatically.
+
+### How a material sale works now
+1. Student clicks **Buy** on a material → enters their email → is sent to HitPay.
+2. In **Requests**, you'll see their email with a **Pending** material request.
+3. Confirm the payment in HitPay, **pick a validity date** (how long their access
+   should last — your choice), and click **Set validity & mark sent**.
+4. Share the Drive file with their email (set the Drive link to expire on/around
+   your chosen date if you want to enforce it).
+
+### Notes
+- A **pending** code does **not** work until you activate it, so nobody gets quiz
+  access before you've confirmed payment.
+- Deleting a still-pending quiz request also removes its un-activated code.
+- You can still create codes manually any time in the **Access Codes** tab (for
+  giveaways, support, etc.).
