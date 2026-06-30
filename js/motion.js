@@ -10,9 +10,6 @@ const REVEAL_SELECTORS = [
   "main .steps .step",
   "main .quote",
   "main .subject-group",
-  "main .page-head",
-  "main .section > .container > h2",
-  "main .section--tight > .container > h2",
 ];
 
 export function initMotion() {

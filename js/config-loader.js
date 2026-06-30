@@ -6,6 +6,9 @@
 
 import { applyChrome } from "./ui.js";
 import { initMotion } from "./motion.js";
+import { initFx } from "./fx.js";
+import { initCursor } from "./cursor.js";
+import "./loader.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   applyChrome().catch((err) => {
@@ -13,4 +16,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.warn("Chrome/settings could not be loaded from the API:", err);
   });
   try { initMotion(); } catch (e) { /* motion is purely cosmetic */ }
+  try { initFx(); } catch (e) { /* fx is purely cosmetic */ }
+  try { initCursor(); } catch (e) { /* cursor is purely cosmetic */ }
 });
