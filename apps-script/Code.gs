@@ -82,6 +82,7 @@ function handleRequest(e, method) {
       case 'adminUpdateQuestion':
       case 'adminDeleteQuestion':
       case 'adminReorderQuestions':
+      case 'adminBulkAddQuestions':
       case 'adminListProducts':
       case 'adminCreateProduct':
       case 'adminUpdateProduct':
@@ -683,7 +684,7 @@ function dispatchAdmin_(action, body) {
 }
 
 function isAdminWriteAction_(action) {
-  return /^(adminCreate|adminUpdate|adminDelete|adminAdd|adminReorder)/.test(action);
+  return /^(adminCreate|adminUpdate|adminDelete|adminAdd|adminReorder|adminBulk)/.test(action);
 }
 
 function runAdminAction_(action, body) {
@@ -697,6 +698,7 @@ function runAdminAction_(action, body) {
     case 'adminUpdateQuestion':   return adminUpdateQuestion_(body);
     case 'adminDeleteQuestion':   return adminDeleteQuestion_(body);
     case 'adminReorderQuestions': return adminReorderQuestions_(body);
+    case 'adminBulkAddQuestions': return adminBulkAddQuestions_(body);
     case 'adminListProducts':     return adminListProducts_(body);
     case 'adminCreateProduct':    return adminCreateProduct_(body);
     case 'adminUpdateProduct':    return adminUpdateProduct_(body);
@@ -995,6 +997,34 @@ function adminAddQuestion_(body) {
 
   appendRowObject_(TAB_QUIZZES, questionRowObject_(quizId, body, nextNum, meta));
   return { ok: true, question_number: nextNum };
+}
+
+/** Bulk-append questions (from a CSV import). Adds every valid row; reports
+ *  any skipped rows with the reason. Carries quiz-level fields like adminAddQuestion. */
+function adminBulkAddQuestions_(body) {
+  var quizId = String(body.quiz_id || '').trim();
+  if (!quizId) return { ok: false, error: 'quiz_id is required.' };
+  var list = body.questions;
+  if (!Array.isArray(list) || !list.length) return { ok: false, error: 'No questions found to import.' };
+  ensureColumns_(TAB_QUIZZES, ['timer_minutes']);
+
+  var rows = quizRows_(quizId);
+  var meta = rows[0] || null;
+  var nextNum = 1;
+  for (var i = 0; i < rows.length; i++) nextNum = Math.max(nextNum, toNum_(rows[i].question_number, 0) + 1);
+
+  var added = 0, errors = [];
+  for (var j = 0; j < list.length; j++) {
+    var q = list[j] || {};
+    var err = validateQuestionInput_(q);
+    if (err) { errors.push({ row: j + 1, error: err }); continue; }
+    appendRowObject_(TAB_QUIZZES, questionRowObject_(quizId, {
+      quiz_title: body.quiz_title, subject: body.subject, timer_minutes: body.timer_minutes,
+      question_text: q.question_text, options: q.options, correct_index: q.correct_index, explanation: q.explanation
+    }, nextNum, meta));
+    nextNum++; added++;
+  }
+  return { ok: true, added: added, skipped: errors.length, errors: errors };
 }
 
 function adminUpdateQuestion_(body) {

@@ -358,10 +358,15 @@ async function renderQuestions(p) {
 
   const addBtn = el("button", { class: "btn btn--secondary", text: "+ Add question" });
   addBtn.addEventListener("click", () => openQuestionForm(p, null, data));
+  const importBtn = el("button", { class: "btn btn--outline", text: "⇪ Import CSV" });
+  importBtn.addEventListener("click", () => openBulkImport(p, data));
+  const headActions = el("div", { class: "row-actions" });
+  headActions.appendChild(importBtn);
+  headActions.appendChild(addBtn);
 
   const wrap = el("div");
   wrap.appendChild(back);
-  wrap.appendChild(sectionHead(`Questions — ${q.quiz_title}`, addBtn));
+  wrap.appendChild(sectionHead(`Questions — ${q.quiz_title}`, headActions));
 
   const questions = data.questions || [];
   if (!questions.length) {
@@ -918,4 +923,170 @@ Good luck with your review!`;
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) root.replaceChildren(); });
   backdrop.appendChild(modal);
   root.replaceChildren(backdrop);
+}
+
+/* ============================================================================
+ * BULK CSV IMPORT — upload a .csv of questions to build a quiz fast.
+ * Parsed entirely in the browser (no library), then sent to
+ * adminBulkAddQuestions. Expected columns (header row, any order):
+ *   question | option_a | option_b | option_c | option_d | correct | explanation
+ * "correct" is the letter A–D (or 1–4) of the right option. c/d optional.
+ * ==========================================================================*/
+
+const CSV_TEMPLATE =
+`question,option_a,option_b,option_c,option_d,correct,explanation
+"Which load is a permanent, static load due to self-weight?","Live load","Dead load","Wind load","Seismic load",B,"Dead loads are permanent and include the structure's self-weight."
+"In reinforced concrete, steel reinforcement mainly resists?","Compression","Tension","Weight","Fire",B,"Concrete is weak in tension; steel carries the tensile stresses."
+"A floor plan is a horizontal cut viewed from above.","True","False",,,A,"Correct — a floor plan is a horizontal section seen from above."
+`;
+
+/** Minimal robust CSV parser → array of rows (each an array of fields).
+ *  Handles quoted fields, escaped "" quotes, commas/newlines inside quotes. */
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  text = String(text).replace(/\r\n?/g, "\n");
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else if (c === '"') { inQuotes = true; }
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else field += c;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  // drop fully-empty trailing rows
+  return rows.filter((r) => r.some((v) => String(v).trim() !== ""));
+}
+
+function csvToQuestions(text) {
+  const rows = parseCSV(text);
+  if (!rows.length) return { questions: [], errors: [{ row: 0, error: "The file is empty." }] };
+
+  const header = rows[0].map((h) => String(h).trim().toLowerCase());
+  const idx = (names) => names.map((n) => header.indexOf(n)).find((i) => i >= 0);
+  const qi = idx(["question", "question_text"]);
+  const ai = idx(["option_a", "a"]);
+  const bi = idx(["option_b", "b"]);
+  const ci = idx(["option_c", "c"]);
+  const di = idx(["option_d", "d"]);
+  const corri = idx(["correct", "correct_option", "answer"]);
+  const expi = idx(["explanation", "explain"]);
+
+  if (qi == null || ai == null || bi == null || corri == null) {
+    return { questions: [], errors: [{ row: 1, error: "Missing required columns. Need at least: question, option_a, option_b, correct." }] };
+  }
+
+  const questions = [], errors = [];
+  for (let r = 1; r < rows.length; r++) {
+    const cells = rows[r];
+    const get = (i) => (i != null && i < cells.length ? String(cells[i]).trim() : "");
+    const opts = [get(ai), get(bi), ci != null ? get(ci) : "", di != null ? get(di) : ""].filter((o) => o !== "");
+    const qText = get(qi);
+    const correctRaw = get(corri).toUpperCase();
+    let correctIndex = "ABCD".indexOf(correctRaw);
+    if (correctIndex < 0 && /^[1-4]$/.test(correctRaw)) correctIndex = Number(correctRaw) - 1;
+
+    if (!qText) { errors.push({ row: r + 1, error: "Empty question." }); continue; }
+    if (opts.length < 2) { errors.push({ row: r + 1, error: "Need at least 2 options." }); continue; }
+    if (correctIndex < 0 || correctIndex >= opts.length) { errors.push({ row: r + 1, error: `"correct" must be A–${"ABCD"[opts.length - 1]} (a filled option).` }); continue; }
+    questions.push({ question_text: qText, options: opts, correct_index: correctIndex, explanation: expi != null ? get(expi) : "" });
+  }
+  return { questions, errors };
+}
+
+function downloadTemplate() {
+  const blob = new Blob([CSV_TEMPLATE], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "quiz-import-template.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function openBulkImport(p, data) {
+  const q = quizView.quiz;
+  const wrap = el("div");
+  const back = el("button", { class: "btn btn--ghost btn--sm", text: "← Back to questions" });
+  back.addEventListener("click", () => renderQuizzes());
+  wrap.appendChild(back);
+
+  const form = el("div", { class: "admin-form" });
+  form.appendChild(el("h3", { text: `Import questions from CSV — ${q.quiz_title}` }));
+  form.appendChild(el("p", { class: "muted", text:
+    "Upload a .csv with columns: question, option_a, option_b, option_c, option_d, correct, explanation. " +
+    "\"correct\" is the letter (A–D) of the right option. Columns C and D are optional. Imported questions are added after any existing ones." }));
+
+  const tplBtn = el("button", { class: "btn btn--outline btn--sm", text: "⬇ Download CSV template", attrs: { type: "button" } });
+  tplBtn.addEventListener("click", downloadTemplate);
+  form.appendChild(tplBtn);
+
+  const file = el("input", { attrs: { type: "file", accept: ".csv,text/csv", style: "display:block;margin:1rem 0" } });
+  form.appendChild(file);
+
+  const preview = el("div");
+  form.appendChild(preview);
+
+  let parsed = null;
+  file.addEventListener("change", () => {
+    const f = file.files && file.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      parsed = csvToQuestions(String(reader.result || ""));
+      renderPreview();
+    };
+    reader.onerror = () => toast("Couldn't read that file.", "err");
+    reader.readAsText(f);
+  });
+
+  function renderPreview() {
+    preview.replaceChildren();
+    const okN = parsed.questions.length, errN = parsed.errors.length;
+    preview.appendChild(el("div", { class: "alert " + (okN ? "alert--success" : "alert--error"),
+      text: `${okN} valid question${okN === 1 ? "" : "s"} ready to import` + (errN ? ` · ${errN} row(s) skipped` : "") }));
+
+    if (errN) {
+      const ul = el("ul");
+      parsed.errors.slice(0, 12).forEach((e) => ul.appendChild(el("li", { text: `Row ${e.row}: ${e.error}` })));
+      preview.appendChild(ul);
+    }
+    if (okN) {
+      // show first few questions as a sanity check
+      const list = el("div", { class: "row-list" });
+      parsed.questions.slice(0, 5).forEach((qq, i) => {
+        list.appendChild(el("div", { class: "row-item", children: [
+          el("div", { class: "row-main", children: [
+            el("h4", { text: `${i + 1}. ${qq.question_text}` }),
+            el("div", { class: "row-meta", text: `Correct: ${"ABCD"[qq.correct_index]}. ${qq.options[qq.correct_index]}` }),
+          ]}),
+        ]}));
+      });
+      if (okN > 5) list.appendChild(el("p", { class: "muted", text: `…and ${okN - 5} more.` }));
+      preview.appendChild(list);
+
+      const importBtn = el("button", { class: "btn btn--secondary", text: `Import ${okN} question${okN === 1 ? "" : "s"}`, attrs: { type: "button" } });
+      importBtn.addEventListener("click", async () => {
+        busy(importBtn, true, "Importing…");
+        const res = await adminPost("adminBulkAddQuestions", {
+          quiz_id: q.quiz_id, quiz_title: q.quiz_title, subject: q.subject, timer_minutes: q.timer_minutes,
+          questions: parsed.questions,
+        });
+        busy(importBtn, false);
+        if (res.ok) {
+          toast(`Imported ${res.added} question${res.added === 1 ? "" : "s"}` + (res.skipped ? ` (${res.skipped} skipped)` : "") + ". Change is live.");
+          if (quizView.quiz) quizView.quiz.isNew = false;
+          renderQuizzes();
+        } else toast(res.error || "Import failed.", "err");
+      });
+      preview.appendChild(el("div", { attrs: { style: "margin-top:1rem" }, children: [importBtn] }));
+    }
+  }
+
+  wrap.appendChild(form);
+  p.replaceChildren(wrap);
 }

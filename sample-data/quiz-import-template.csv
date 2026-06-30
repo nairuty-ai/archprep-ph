@@ -1,0 +1,6 @@
+question,option_a,option_b,option_c,option_d,correct,explanation
+"Which load is a permanent, static load due to the self-weight of structural and non-structural elements?","Live load","Dead load","Wind load","Seismic load",B,"Dead loads are permanent/static and include the self-weight of the structure and fixed components."
+"In reinforced concrete, what is the main purpose of steel reinforcement?","To resist compression only","To resist tension","To reduce weight","To improve fire rating",B,"Concrete is strong in compression but weak in tension; steel carries the tensile stresses."
+"A simply supported beam carries a central point load. Where is the maximum bending moment?","At the supports","At the quarter span","At mid-span","Uniformly along the beam",C,"For a central point load on a simply supported beam, the bending moment is maximum at mid-span."
+"Which Republic Act is known as the Architecture Act of 2004?","RA 1378","RA 9266","RA 9514","RA 386",B,"RA 9266 is the Architecture Act of 2004."
+"A floor plan is a horizontal cut through a building viewed from above.","True","False",,,A,"Correct — a floor plan is a horizontal section seen from above; only two options are needed here."

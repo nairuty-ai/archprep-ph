@@ -220,6 +220,18 @@ check("delete code", A("adminDeleteCode", { code: cc.code }).ok);
 check("update settings upsert", A("adminUpdateSettings", { key: "announcement_banner", value: "Sale!" }).ok);
 check("settings reflect via public getSettings", get({ action: "getSettings" }).announcement_banner === "Sale!");
 
+/* ============ Bulk CSV import ============ */
+console.log("Bulk question import:");
+const bulk = A("adminBulkAddQuestions", { quiz_id: "bulk-1", quiz_title: "Bulk Quiz", subject: "Test", timer_minutes: 0, questions: [
+  { question_text: "Q1?", options: ["a", "b", "c"], correct_index: 2, explanation: "c is right" },
+  { question_text: "Q2?", options: ["x", "y"], correct_index: 0, explanation: "" },
+  { question_text: "", options: ["a", "b"], correct_index: 0 }, // invalid -> skipped
+]});
+check("bulk added 2, skipped 1", bulk.ok && bulk.added === 2 && bulk.skipped === 1);
+const bq = A("adminListQuestions", { quiz_id: "bulk-1" });
+check("bulk quiz has 2 questions numbered 1,2", bq.questions.length === 2 && bq.questions[0].question_number === 1 && bq.questions[1].question_number === 2);
+check("bulk correct option mapped (index 2 -> C)", bq.questions[0].correct_option === "C");
+
 /* ============ Purchase / access-request flow ============ */
 console.log("Purchase flow (email capture -> pending code -> activate):");
 check("requestAccess rejects bad email", post("requestAccess", { email: "nope", product_id: "quiz-structural" }).ok === false);

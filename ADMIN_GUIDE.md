@@ -319,3 +319,45 @@ QR Ph. That gives you a tidy inbox of who's buying what — no more guessing.
 - Deleting a still-pending quiz request also removes its un-activated code.
 - You can still create codes manually any time in the **Access Codes** tab (for
   giveaways, support, etc.).
+
+---
+
+## Bulk-upload quiz questions from a CSV (fast)
+
+Instead of typing questions one by one, you can upload a whole quiz at once from a
+spreadsheet.
+
+### The file format
+A plain **CSV** with this header row (Excel and Google Sheets both "Save as / Download
+as CSV"):
+
+```
+question,option_a,option_b,option_c,option_d,correct,explanation
+```
+
+- **question** — the question text.
+- **option_a / option_b** — required. **option_c / option_d** — optional (leave blank
+  for true/false or 3-option questions).
+- **correct** — the **letter** of the right option: `A`, `B`, `C`, or `D` (you can also
+  use `1`–`4`).
+- **explanation** — shown to the student after they submit (optional but recommended).
+
+A ready-made example is in `sample-data/quiz-import-template.csv`, and you can also
+click **Download CSV template** inside the portal.
+
+### Steps
+1. **Admin → Quizzes →** open a quiz (or create a new one) **→ Manage questions**.
+2. Click **⇪ Import CSV**.
+3. (Optional) **Download CSV template**, fill it in your spreadsheet, save as CSV.
+4. Choose your file. The portal shows a **preview**: how many questions are valid, a
+   sample of them, and any rows it had to skip (with the reason).
+5. Click **Import N questions**. They're added after any existing questions and go
+   live immediately.
+
+### Tips
+- Wrap any text containing commas in double quotes — most spreadsheets do this
+  automatically when exporting to CSV.
+- You can mix bulk import and manual editing freely; imported questions can be
+  edited, reordered, or deleted like any other.
+- Re-importing the same file adds the questions again (it doesn't replace) — so
+  import once, then edit.
