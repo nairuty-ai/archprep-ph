@@ -15,3 +15,10 @@ node_modules/
 # Temp/scratch files
 _*.py
 _*.js
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
