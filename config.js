@@ -22,7 +22,7 @@ window.APP_CONFIG = {
   // Example: "https://script.google.com/macros/s/AKfycb.../exec"
   // Leave as "" to run the site in "demo / not yet connected" mode (the
   // catalogue pages will show a friendly "not configured yet" message).
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyoOUAsQ2kRHhrlnu4Yi9qu-3-3jkR7zFYqS9ujVWUrZj-84szZAsASlKryy8NrPFYevw/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxOVju3J8GwKSRStJ4H9HdbYprPZMNNLEQ02LTxs6PV-875s4UOA3Rcu2N6D2pcicpl/exec",
 
   // ---- Brand + contact fallbacks (Settings tab overrides these) ------------
   BRAND_NAME: "ArchPrep PH",
