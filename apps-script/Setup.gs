@@ -29,6 +29,8 @@ function setupSheet() {
   writeTab_(ss, 'Settings', SETTINGS_SEED_());
   writeTab_(ss, 'Attempts', [['timestamp', 'code', 'quiz_id', 'score', 'total']]);
   writeTab_(ss, 'Requests', [['request_id', 'timestamp', 'email', 'product_id', 'type', 'title', 'scope', 'code', 'valid_until', 'status']]);
+  writeTab_(ss, 'Students', [['student_id', 'email', 'display_name', 'ref_code', 'referred_by', 'gcash_number', 'created_at', 'status']]);
+  writeTab_(ss, 'ReferralLedger', [['entry_id', 'referrer_ref_code', 'referrer_email', 'buyer_email', 'product_id', 'order_ref', 'amount', 'status', 'reward_type', 'created_at', 'confirmed_at', 'paid_at', 'notes']]);
 
   // Remove the default empty "Sheet1" if it's still there and unused.
   var def = ss.getSheetByName('Sheet1');
@@ -98,6 +100,12 @@ function SETTINGS_SEED_() {
     ['contact_email','rehinaneel@gmail.com'],
     ['announcement_banner',''],
     ['hero_headline','Pass the Architect Licensure Exam with confidence.'],
-    ['hero_subhead','Focused review materials and exam-style practice quizzes for Filipino architecture graduates — affordable, mobile-friendly, and built for the PRC ALE.']
+    ['hero_subhead','Focused review materials and exam-style practice quizzes for Filipino architecture graduates — affordable, mobile-friendly, and built for the PRC ALE.'],
+    ['site_url','https://archprep-ph.nairuty-patel-84-457.workers.dev'],
+    ['referral_amount','9'],
+    ['reward_type','cash'],
+    ['payout_threshold','100'],
+    ['reward_on','every_purchase'],
+    ['require_account_to_buy','FALSE']
   ];
 }

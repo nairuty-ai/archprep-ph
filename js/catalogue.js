@@ -4,7 +4,7 @@
  * ==========================================================================*/
 
 import {
-  el, peso, apiGet, apiPost, isConfigured,
+  el, peso, apiGet, apiPost, isConfigured, getStoredRef,
   renderLoading, renderError, renderEmpty, renderNotConfigured,
 } from "./ui.js";
 
@@ -199,7 +199,7 @@ function openCheckout(p, link) {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return showErr("Please enter a valid email address.");
     go.disabled = true; go.textContent = "Processing…";
     let res;
-    try { res = await apiPost("requestAccess", { email, product_id: p.product_id }); }
+    try { res = await apiPost("requestAccess", { email, product_id: p.product_id, ref: getStoredRef() }); }
     catch (e) { res = { ok: false }; }
     if (res && res.ok) {
       // Open HitPay payment page, then show a clear confirmation.

@@ -112,7 +112,11 @@ const CacheService = {
   }),
 };
 
-const sandbox = { PropertiesService, Utilities, SpreadsheetApp, ContentService, CacheService, Logger: { log() {} }, console };
+/* ---- MailApp mock: capture the OTP from the email body ---- */
+let lastOtp = null;
+const MailApp = { sendEmail: (to, subj, bodyText) => { const m = String(bodyText).match(/code is:\s*(\d{6})/); if (m) lastOtp = m[1]; } };
+
+const sandbox = { PropertiesService, Utilities, SpreadsheetApp, ContentService, CacheService, MailApp, Logger: { log() {} }, console };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync("apps-script/Code.gs", "utf8"), sandbox);
 
@@ -262,6 +266,46 @@ check("admin sets material valid_until", A("adminFulfillRequest", { request_id: 
 check("material request now fulfilled with date",
   A("adminListRequests").requests.find((r) => r.request_id === mReqId).valid_until === "2026-12-31");
 check("delete request works", A("adminDeleteRequest", { request_id: mReqId }).ok);
+
+/* ============ Student accounts (passwordless OTP) — Stage 1 ============ */
+console.log("Student auth (email OTP):");
+check("requestCode rejects bad email", post("studentRequestCode", { email: "nope" }).ok === false);
+check("requestCode is generic ok", post("studentRequestCode", { email: "stud1@example.com" }).ok === true);
+const otp1 = lastOtp;
+check("OTP captured (6 digits)", /^\d{6}$/.test(otp1 || ""));
+check("wrong code rejected", post("studentVerifyCode", { email: "stud1@example.com", code: "000000" }).ok === false || otp1 === "000000");
+const verify1 = post("studentVerifyCode", { email: "stud1@example.com", code: otp1 });
+check("verify creates account + student token", verify1.ok && /^[0-9a-f]{64}$/.test(verify1.token) && /^REF-/.test(verify1.profile.ref_code));
+const sTok1 = verify1.token;
+const ref1 = verify1.profile.ref_code;
+check("no password stored anywhere", !JSON.stringify(STORE).toLowerCase().includes("password"));
+
+console.log("Token namespace separation (security):");
+check("STUDENT token REJECTED by admin endpoint", post("adminListQuizzes", { token: sTok1 }).error === "session_expired");
+check("ADMIN token REJECTED by student endpoint", post("getStudentProfile", { token: t2 }).error === "session_expired");
+check("student endpoint works with student token", post("getStudentProfile", { token: sTok1 }).ok === true);
+
+console.log("Referral capture at signup:");
+post("studentRequestCode", { email: "stud2@example.com" });
+const verify2 = post("studentVerifyCode", { email: "stud2@example.com", code: lastOtp, ref: ref1 });
+check("second student referred_by = first's ref_code", (function () {
+  const row = DB.Students.find((r) => String(r[1]).toLowerCase() === "stud2@example.com");
+  return row && row[4] === ref1; // referred_by column
+})());
+post("studentRequestCode", { email: "selfref@example.com" });
+// self-referral: sign up using a ref that will belong to self is impossible at creation,
+// but an unknown ref must be ignored (no crash, referred_by blank)
+const verify3 = post("studentVerifyCode", { email: "selfref@example.com", code: lastOtp, ref: "REF-XXXX" });
+check("unknown ref ignored (referred_by blank)", (function () {
+  const row = DB.Students.find((r) => String(r[1]).toLowerCase() === "selfref@example.com");
+  return row && (row[4] === "" || row[4] == null);
+})());
+
+console.log("Profile + logout:");
+check("update profile (name + gcash)", post("updateStudentProfile", { token: sTok1, display_name: "Ana", gcash_number: "0917..." }).ok === true);
+check("profile reflects update", post("getStudentProfile", { token: sTok1 }).profile.display_name === "Ana");
+check("student logout ok", post("studentLogout", { token: sTok1 }).ok === true);
+check("token invalid after logout", post("getStudentProfile", { token: sTok1 }).error === "session_expired");
 
 console.log(`\n=== ${pass} passed, ${fail} failed ===`);
 process.exit(fail ? 1 : 0);

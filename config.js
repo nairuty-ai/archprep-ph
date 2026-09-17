@@ -36,4 +36,13 @@ window.APP_CONFIG = {
   // ---- Mock-test timer (minutes). Used only for quizzes whose id starts with
   // "mock". Set to 0 to disable the timer entirely. ------------------------
   MOCK_TEST_MINUTES: 60,
+
+  // ---- Referral program (DISPLAY ONLY — the server values in the Settings
+  // tab are authoritative for anything affecting money). These just control
+  // what the front-end shows. Keep them in sync with the Settings tab. -----
+  REFERRAL_AMOUNT: 9,            // ₱ reward shown on the account page
+  REWARD_TYPE: "cash",          // "cash" | "credit"
+  PAYOUT_THRESHOLD: 100,        // ₱ minimum before a cash payout can be requested
+  REWARD_ON: "every_purchase",  // "every_purchase" | "first_purchase_only"
+  REQUIRE_ACCOUNT_TO_BUY: false // guest checkout stays on by default
 };

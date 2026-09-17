@@ -68,6 +68,20 @@ function handleRequest(e, method) {
       /* ---- Public: capture buyer email at checkout (no token) ---- */
       case 'requestAccess': return jsonOut(requestAccess_(body));
 
+      /* ---- Student auth (passwordless OTP; no token) ---- */
+      case 'studentRequestCode': return jsonOut(studentRequestCode_(body));
+      case 'studentVerifyCode':  return jsonOut(studentVerifyCode_(body));
+
+      /* ---- Student endpoints (require a STUDENT token, not admin) ---- */
+      case 'studentLogout':
+      case 'getStudentProfile':
+      case 'updateStudentProfile':
+      case 'getMyReferralInfo':
+      case 'getMyReferrals':
+      case 'requestPayout':
+      case 'getMyPurchases':
+        return jsonOut(dispatchStudent_(action, body));
+
       /* ---- Admin auth (adminLogin is the only admin action without a token) ---- */
       case 'adminLogin':   return jsonOut(adminLogin_(body));
       case 'adminLogout':  return jsonOut(adminLogout_(body));
@@ -520,6 +534,19 @@ function selfTest_() {
   Logger.log('Settings: ' + JSON.stringify(getSettings_()));
   Logger.log('Products: ' + JSON.stringify(getProducts_()));
   Logger.log('Quiz list: ' + JSON.stringify(getQuizList_()));
+}
+
+/**
+ * EDITOR-RUN ONCE to authorise email sending (student OTP uses MailApp).
+ * Run this from the editor; approve the Gmail permission prompt; check your
+ * inbox. After this, student sign-in codes will send. Change the address if you
+ * like — it emails the Settings contact_email (or the script owner) by default.
+ */
+function testEmail_() {
+  var to = String(getSettings_().contact_email || Session.getEffectiveUser().getEmail());
+  MailApp.sendEmail(to, 'ArchPrep PH — email test',
+    'If you received this, email sending is authorised and student OTP codes will work.');
+  Logger.log('Test email sent to ' + to);
 }
 
 /*****************************************************************************
@@ -1377,4 +1404,232 @@ function adminDeleteRequest_(body) {
   }
   deleteSheetRow_(TAB_REQUESTS, req.rowIndex);
   return { ok: true };
+}
+
+/*****************************************************************************
+ * STUDENT ACCOUNTS + REFERRALS (passwordless email-OTP). Additive feature.
+ * ---------------------------------------------------------------------------
+ * Student auth is SEPARATE from and lower-privilege than admin auth:
+ *   - Student sessions:  ssession:<token> -> { email, expires }  (30-day TTL)
+ *   - OTP:               otp:<emailLower> -> { salt, codeHash, expires, attempts }
+ *   - OTP rate limit:    otplock:<emailLower> -> { count, lastMs }
+ * A student token is accepted ONLY by student endpoints (dispatchStudent_);
+ * it can never reach an admin endpoint (dispatchAdmin_ checks admin tokens).
+ * No passwords are ever created or stored for anyone.
+ *****************************************************************************/
+
+var TAB_STUDENTS = 'Students';
+var TAB_LEDGER   = 'ReferralLedger';
+
+var STUDENT_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+var OTP_TTL_MS       = 10 * 60 * 1000;   // 10 minutes
+var OTP_MAX_ATTEMPTS = 5;                // verify attempts before code invalidated
+var OTP_REQ_MAX      = 5;                // code requests per window
+var OTP_REQ_WINDOW_MS = 15 * 60 * 1000;  // 15 minutes
+
+var STUDENT_COLS = ['student_id', 'email', 'display_name', 'ref_code', 'referred_by',
+  'gcash_number', 'created_at', 'status'];
+var LEDGER_COLS = ['entry_id', 'referrer_ref_code', 'referrer_email', 'buyer_email',
+  'product_id', 'order_ref', 'amount', 'status', 'reward_type',
+  'created_at', 'confirmed_at', 'paid_at', 'notes'];
+
+/* ---- Referral config (Settings-backed, server-authoritative) ---- */
+function refConfig_() {
+  var s = getSettings_(); // key/value from Settings tab
+  var num = function (v, d) { var n = Number(v); return isFinite(n) ? n : d; };
+  var truth = function (v, d) { if (v == null || String(v).trim() === '') return d; return truthy_(v); };
+  var rt = String(s.reward_type || 'cash').trim().toLowerCase();
+  var ro = String(s.reward_on || 'every_purchase').trim().toLowerCase();
+  return {
+    referral_amount: num(s.referral_amount, 9),
+    reward_type: (rt === 'credit') ? 'credit' : 'cash',
+    payout_threshold: num(s.payout_threshold, 100),
+    reward_on: (ro === 'first_purchase_only') ? 'first_purchase_only' : 'every_purchase',
+    require_account_to_buy: truth(s.require_account_to_buy, false)
+  };
+}
+
+/* ---- Small helpers ---- */
+function makeOtp_() {
+  var n = Math.floor(Math.random() * 1000000);
+  return ('000000' + n).slice(-6);
+}
+function genRefCode_() {
+  var alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var set = existingValues_(TAB_STUDENTS, 'ref_code');
+  for (var tries = 0; tries < 60; tries++) {
+    var s = '';
+    for (var i = 0; i < 4; i++) s += alpha.charAt(Math.floor(Math.random() * alpha.length));
+    var code = 'REF-' + s;
+    if (!set[code.toLowerCase()]) return code;
+  }
+  return 'REF-' + String(Date.now()).slice(-5);
+}
+function ensureStudentTabs_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_STUDENTS)) ss.insertSheet(TAB_STUDENTS).appendRow(STUDENT_COLS);
+  if (!ss.getSheetByName(TAB_LEDGER)) ss.insertSheet(TAB_LEDGER).appendRow(LEDGER_COLS);
+}
+function findStudentByEmail_(email) {
+  var e = String(email || '').trim().toLowerCase();
+  if (!e) return null;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_STUDENTS)) return null;
+  var t = readTable_(TAB_STUDENTS, ['email']);
+  for (var i = 0; i < t.rows.length; i++) {
+    if (String(t.rows[i].email).trim().toLowerCase() === e) return { row: t.rows[i], rowIndex: t.rows[i].__row };
+  }
+  return null;
+}
+function findStudentByRef_(refCode) {
+  var c = String(refCode || '').trim().toLowerCase();
+  if (!c) return null;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_STUDENTS)) return null;
+  var t = readTable_(TAB_STUDENTS, ['ref_code']);
+  for (var i = 0; i < t.rows.length; i++) {
+    if (String(t.rows[i].ref_code).trim().toLowerCase() === c) return { row: t.rows[i], rowIndex: t.rows[i].__row };
+  }
+  return null;
+}
+function referralLinkFor_(refCode) {
+  var s = getSettings_();
+  var base = String(s.site_url || '').trim();
+  return (base ? base.replace(/\/+$/, '') : '') + '/?ref=' + encodeURIComponent(refCode);
+}
+
+/* ---- OTP request ---- */
+function studentRequestCode_(body) {
+  var email = String(body.email || '').trim().toLowerCase();
+  var generic = { ok: true }; // never reveal whether the email exists
+  if (!isEmail_(email)) return { ok: false, error: 'Please enter a valid email address.' };
+
+  // rate limit code requests per email
+  var lk = props_().getProperty('otplock:' + email);
+  var lock = lk ? JSON.parse(lk) : { count: 0, lastMs: 0 };
+  if (Date.now() - lock.lastMs > OTP_REQ_WINDOW_MS) lock = { count: 0, lastMs: 0 };
+  if (lock.count >= OTP_REQ_MAX) return generic; // silently drop; don't reveal
+  lock.count += 1; lock.lastMs = Date.now();
+  props_().setProperty('otplock:' + email, JSON.stringify(lock));
+
+  var code = makeOtp_();
+  var salt = randomSaltHex_();
+  props_().setProperty('otp:' + email, JSON.stringify({
+    salt: salt, codeHash: sha256Hex_(salt + code), expires: Date.now() + OTP_TTL_MS, attempts: 0
+  }));
+
+  try {
+    var brand = String(getSettings_().brand_name || 'ArchPrep PH');
+    MailApp.sendEmail(email, brand + ' — your sign-in code',
+      'Your ' + brand + ' sign-in code is: ' + code + '\n\n' +
+      'It expires in 10 minutes. If you didn\'t request this, you can safely ignore this email.');
+  } catch (e) { /* quota or send failure: still return generic */ }
+  return generic;
+}
+
+/* ---- OTP verify (creates the account on first successful verify) ---- */
+function studentVerifyCode_(body) {
+  var email = String(body.email || '').trim().toLowerCase();
+  var code = String(body.code || '').trim();
+  var ref = String(body.ref || '').trim();
+  if (!isEmail_(email) || !code) return { ok: false, error: 'Invalid email or code.' };
+
+  var raw = props_().getProperty('otp:' + email);
+  if (!raw) return { ok: false, error: 'That code has expired or was already used. Please request a new one.' };
+  var rec = JSON.parse(raw);
+  if (Date.now() > rec.expires) { props_().deleteProperty('otp:' + email); return { ok: false, error: 'That code has expired. Please request a new one.' }; }
+  if (rec.attempts >= OTP_MAX_ATTEMPTS) { props_().deleteProperty('otp:' + email); return { ok: false, error: 'Too many attempts. Please request a new code.' }; }
+
+  if (sha256Hex_(rec.salt + code) !== rec.codeHash) {
+    rec.attempts += 1;
+    props_().setProperty('otp:' + email, JSON.stringify(rec));
+    return { ok: false, error: 'Incorrect code. Please try again.' };
+  }
+  props_().deleteProperty('otp:' + email); // one-time use
+
+  ensureStudentTabs_();
+  var existing = findStudentByEmail_(email);
+  var profile;
+  if (existing) {
+    profile = studentProfile_(existing.row);
+  } else {
+    var refCode = genRefCode_();
+    var referredBy = '';
+    // self-referral guard + validity at signup only
+    if (ref) {
+      var r = findStudentByRef_(ref);
+      if (r && String(r.row.status).toLowerCase() !== 'disabled'
+          && String(r.row.email).trim().toLowerCase() !== email) {
+        referredBy = r.row.ref_code;
+      }
+    }
+    appendRowObject_(TAB_STUDENTS, {
+      student_id: 'STU-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 900 + 100),
+      email: email, display_name: '', ref_code: refCode, referred_by: referredBy,
+      gcash_number: '', created_at: new Date().toISOString(), status: 'active'
+    });
+    profile = studentProfile_(findStudentByEmail_(email).row);
+  }
+
+  var token = makeToken_();
+  var expires = Date.now() + STUDENT_SESSION_TTL_MS;
+  props_().setProperty('ssession:' + token, JSON.stringify({ email: email, expires: expires }));
+  return { ok: true, token: token, expires: expires, profile: profile };
+}
+
+function studentProfile_(row) {
+  return {
+    email: row.email, display_name: row.display_name || '', ref_code: row.ref_code,
+    referral_link: referralLinkFor_(row.ref_code), gcash_number: row.gcash_number || ''
+  };
+}
+
+/* ---- Student session validation + dispatch gate ---- */
+function validateStudentToken_(token) {
+  if (!token) return { ok: false };
+  var raw = props_().getProperty('ssession:' + token);
+  if (!raw) return { ok: false };
+  var rec = JSON.parse(raw);
+  if (Date.now() > rec.expires) { props_().deleteProperty('ssession:' + token); return { ok: false }; }
+  return { ok: true, email: rec.email };
+}
+
+function dispatchStudent_(action, body) {
+  var auth = validateStudentToken_(body && body.token ? String(body.token) : '');
+  if (!auth.ok) return { ok: false, error: 'session_expired' };
+  var email = auth.email;
+  switch (action) {
+    case 'studentLogout':        return studentLogout_(body);
+    case 'getStudentProfile':    return getStudentProfile_(email);
+    case 'updateStudentProfile': return updateStudentProfile_(email, body);
+    // Dashboard + payout endpoints arrive in a later stage:
+    case 'getMyReferralInfo':
+    case 'getMyReferrals':
+    case 'requestPayout':
+    case 'getMyPurchases':
+      return { ok: false, error: 'not_implemented_yet' };
+    default: return { ok: false, error: 'Unknown student action.' };
+  }
+}
+
+function studentLogout_(body) {
+  var token = body && body.token ? String(body.token) : '';
+  if (token) props_().deleteProperty('ssession:' + token);
+  return { ok: true };
+}
+
+function getStudentProfile_(email) {
+  var s = findStudentByEmail_(email);
+  if (!s) return { ok: false, error: 'session_expired' };
+  return { ok: true, profile: studentProfile_(s.row) };
+}
+
+function updateStudentProfile_(email, body) {
+  var s = findStudentByEmail_(email);
+  if (!s) return { ok: false, error: 'session_expired' };
+  var fields = {};
+  if (body.display_name != null) fields.display_name = String(body.display_name).trim().substring(0, 60);
+  if (body.gcash_number != null) fields.gcash_number = String(body.gcash_number).trim().substring(0, 30);
+  updateRowFields_(TAB_STUDENTS, s.rowIndex, fields);
+  return { ok: true, profile: studentProfile_(findStudentByEmail_(email).row) };
 }

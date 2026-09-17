@@ -218,8 +218,46 @@ function cleanSettings(data) {
  * Call once per page on DOMContentLoaded.
  * ------------------------------------------------------------------------- */
 
+/* Capture a ?ref=<code> referral into localStorage (first-touch, 30-day TTL). */
+export function captureRef() {
+  try {
+    const ref = new URLSearchParams(location.search).get("ref");
+    if (!ref || !/^[A-Za-z0-9-]{3,24}$/.test(ref)) return;
+    let cur = null;
+    try { cur = JSON.parse(localStorage.getItem("archprep_ref")); } catch (e) {}
+    const fresh = cur && cur.ref && (Date.now() - cur.t < 30 * 24 * 3600 * 1000);
+    if (!fresh) localStorage.setItem("archprep_ref", JSON.stringify({ ref, t: Date.now() })); // first-touch: don't overwrite
+  } catch (e) {}
+}
+
+/* Read the stored referral code (empty if none/expired). */
+export function getStoredRef() {
+  try {
+    const c = JSON.parse(localStorage.getItem("archprep_ref"));
+    if (c && c.ref && Date.now() - c.t < 30 * 24 * 3600 * 1000) return c.ref;
+  } catch (e) {}
+  return "";
+}
+
+function injectAccountLink() {
+  $$(".nav-links").forEach((ul) => {
+    if (ul.querySelector("[data-account-link]")) return;
+    const li = el("li");
+    li.appendChild(el("a", { text: "Account", attrs: { href: "account.html", "data-account-link": "1" } }));
+    ul.appendChild(li);
+  });
+  const mm = document.querySelector("#mobile-menu ul");
+  if (mm && !mm.querySelector("[data-account-link]")) {
+    const li = el("li");
+    li.appendChild(el("a", { text: "Account", attrs: { href: "account.html", "data-account-link": "1" } }));
+    mm.appendChild(li);
+  }
+}
+
 export async function applyChrome() {
   buildNavInteractions();
+  captureRef();
+  injectAccountLink();
   const settings = await getSettings();
 
   // Brand name everywhere it's marked
