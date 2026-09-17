@@ -27,10 +27,11 @@ function setupSheet() {
   writeTab_(ss, 'Quizzes', QUIZZES_SEED_());
   writeTab_(ss, 'AccessCodes', ACCESSCODES_SEED_());
   writeTab_(ss, 'Settings', SETTINGS_SEED_());
-  writeTab_(ss, 'Attempts', [['timestamp', 'code', 'quiz_id', 'score', 'total']]);
-  writeTab_(ss, 'Requests', [['request_id', 'timestamp', 'email', 'product_id', 'type', 'title', 'scope', 'code', 'valid_until', 'status']]);
+  writeTab_(ss, 'Attempts', [['timestamp', 'code', 'quiz_id', 'score', 'total', 'email']]);
+  writeTab_(ss, 'Requests', [['request_id', 'timestamp', 'email', 'product_id', 'type', 'title', 'scope', 'code', 'valid_until', 'status', 'ref']]);
   writeTab_(ss, 'Students', [['student_id', 'email', 'display_name', 'ref_code', 'referred_by', 'gcash_number', 'created_at', 'status']]);
   writeTab_(ss, 'ReferralLedger', [['entry_id', 'referrer_ref_code', 'referrer_email', 'buyer_email', 'product_id', 'order_ref', 'amount', 'status', 'reward_type', 'created_at', 'confirmed_at', 'paid_at', 'notes']]);
+  writeTab_(ss, 'Entitlements', [['entitlement_id', 'email', 'product_id', 'type', 'title', 'scope', 'attempts_allowed', 'granted_at', 'order_ref', 'status']]);
 
   // Remove the default empty "Sheet1" if it's still there and unused.
   var def = ss.getSheetByName('Sheet1');

@@ -80,6 +80,9 @@ function handleRequest(e, method) {
       case 'getMyReferrals':
       case 'requestPayout':
       case 'getMyPurchases':
+      case 'getMyLibrary':
+      case 'getMyQuiz':
+      case 'gradeMyQuiz':
         return jsonOut(dispatchStudent_(action, body));
 
       /* ---- Admin auth (adminLogin is the only admin action without a token) ---- */
@@ -108,6 +111,12 @@ function handleRequest(e, method) {
       case 'adminListRequests':
       case 'adminFulfillRequest':
       case 'adminDeleteRequest':
+      case 'adminListReferralBalances':
+      case 'adminListLedger':
+      case 'adminMarkPayout':
+      case 'adminVoidLedgerEntry':
+      case 'adminGetReferralConfig':
+      case 'adminUpdateReferralConfig':
       case 'adminGetSettings':
       case 'adminUpdateSettings':
         return jsonOut(dispatchAdmin_(action, body));
@@ -737,6 +746,12 @@ function runAdminAction_(action, body) {
     case 'adminListRequests':     return adminListRequests_(body);
     case 'adminFulfillRequest':   return adminFulfillRequest_(body);
     case 'adminDeleteRequest':    return adminDeleteRequest_(body);
+    case 'adminListReferralBalances': return adminListReferralBalances_(body);
+    case 'adminListLedger':       return adminListLedger_(body);
+    case 'adminMarkPayout':       return adminMarkPayout_(body);
+    case 'adminVoidLedgerEntry':  return adminVoidLedgerEntry_(body);
+    case 'adminGetReferralConfig': return adminGetReferralConfig_(body);
+    case 'adminUpdateReferralConfig': return adminUpdateReferralConfig_(body);
     case 'adminGetSettings':      return adminGetSettings_(body);
     case 'adminUpdateSettings':   return adminUpdateSettings_(body);
     default: return { ok: false, error: 'Unknown admin action.' };
@@ -1306,7 +1321,11 @@ function runOnce() {
  * ======================================================================== */
 
 var REQUEST_HEADERS = ['request_id', 'timestamp', 'email', 'product_id', 'type',
-  'title', 'scope', 'code', 'valid_until', 'status'];
+  'title', 'scope', 'code', 'valid_until', 'status', 'ref'];
+
+var TAB_ENTITLEMENTS = 'Entitlements';
+var ENTITLEMENT_COLS = ['entitlement_id', 'email', 'product_id', 'type', 'title',
+  'scope', 'attempts_allowed', 'granted_at', 'order_ref', 'status'];
 
 function isEmail_(s) {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || '').trim());
@@ -1336,16 +1355,20 @@ function requestAccess_(body) {
       max_uses: 2, uses_count: 0, status: 'pending', notes: '', email: email
     });
   }
-  logRequest_(email, productId, type, title, scope, code);
+  logRequest_(email, productId, type, title, scope, code, String(body.ref || '').trim());
   return { ok: true, type: type };
 }
 
-function logRequest_(email, productId, type, title, scope, code) {
+function logRequest_(email, productId, type, title, scope, code, ref) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(TAB_REQUESTS);
   if (!sheet) { sheet = ss.insertSheet(TAB_REQUESTS); sheet.appendRow(REQUEST_HEADERS); }
+  ensureColumns_(TAB_REQUESTS, ['ref']);
   var id = 'REQ-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 9000 + 1000);
-  sheet.appendRow([id, new Date(), email, productId, type, title, scope, code, '', 'pending']);
+  appendRowObject_(TAB_REQUESTS, {
+    request_id: id, timestamp: new Date(), email: email, product_id: productId, type: type,
+    title: title, scope: scope, code: code, valid_until: '', status: 'pending', ref: ref || ''
+  });
   return id;
 }
 
@@ -1376,6 +1399,12 @@ function adminFulfillRequest_(body) {
   if (!req) return { ok: false, error: 'Request not found.' };
 
   var type = String(req.row.type || '').trim().toLowerCase();
+
+  // Grant an account entitlement (code-free access) + run referral attribution.
+  // Both are idempotent and safe to run once per confirm.
+  grantEntitlement_(req.row);
+  var reward = referralAttribute_(req.row);
+
   if (type === 'quiz') {
     var code = String(req.row.code || '').trim();
     if (code) {
@@ -1383,12 +1412,77 @@ function adminFulfillRequest_(body) {
       if (cr) updateRowFields_(TAB_ACCESSCODES, cr.rowIndex, { status: 'active' });
     }
     updateRowFields_(TAB_REQUESTS, req.rowIndex, { status: 'fulfilled' });
-    return { ok: true, code: code };
+    return { ok: true, code: code, reward: reward };
   }
   // material: store the admin-chosen validity date and mark fulfilled
   var validUntil = String(body.valid_until || '').trim();
   updateRowFields_(TAB_REQUESTS, req.rowIndex, { valid_until: validUntil, status: 'fulfilled' });
-  return { ok: true };
+  return { ok: true, reward: reward };
+}
+
+/* Grant the buyer's account access to what they bought (idempotent per order). */
+function grantEntitlement_(reqRow) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_ENTITLEMENTS)) ss.insertSheet(TAB_ENTITLEMENTS).appendRow(ENTITLEMENT_COLS);
+  var email = String(reqRow.email || '').trim().toLowerCase();
+  var orderRef = String(reqRow.request_id || '').trim();
+  if (!email || !orderRef) return;
+  // idempotent: skip if an entitlement already exists for this order
+  var t = readTable_(TAB_ENTITLEMENTS, ['order_ref']);
+  for (var i = 0; i < t.rows.length; i++) {
+    if (String(t.rows[i].order_ref).trim() === orderRef) return;
+  }
+  var type = String(reqRow.type || '').trim().toLowerCase();
+  appendRowObject_(TAB_ENTITLEMENTS, {
+    entitlement_id: 'ENT-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 900 + 100),
+    email: email, product_id: reqRow.product_id, type: type, title: reqRow.title,
+    scope: reqRow.scope, attempts_allowed: (type === 'quiz' ? 2 : ''), granted_at: new Date().toISOString(),
+    order_ref: orderRef, status: 'active'
+  });
+}
+
+/* Referral attribution — runs at confirm. Server-authoritative, idempotent. */
+function referralAttribute_(reqRow) {
+  var ref = String(reqRow.ref || '').trim();
+  if (!ref) return null;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_LEDGER)) ss.insertSheet(TAB_LEDGER).appendRow(LEDGER_COLS);
+
+  var buyerEmail = String(reqRow.email || '').trim().toLowerCase();
+  var orderRef = String(reqRow.request_id || '').trim();
+  var cfg = refConfig_();
+
+  var referrer = findStudentByRef_(ref);
+  if (!referrer || String(referrer.row.status).toLowerCase() === 'disabled') return null;
+  var referrerEmail = String(referrer.row.email).trim().toLowerCase();
+  if (referrerEmail === buyerEmail) return null; // self-referral guard
+
+  // duplicate guard: one non-void entry per order
+  var led = readTable_(TAB_LEDGER, ['order_ref', 'status']);
+  for (var i = 0; i < led.rows.length; i++) {
+    if (String(led.rows[i].order_ref).trim() === orderRef &&
+        String(led.rows[i].status).toLowerCase() !== 'void') return null;
+  }
+  // reward scope: first_purchase_only => only the buyer's first-ever confirmed order
+  if (cfg.reward_on === 'first_purchase_only') {
+    var reqs = readTable_(TAB_REQUESTS, ['email', 'status']);
+    var priorConfirmed = 0;
+    for (var j = 0; j < reqs.rows.length; j++) {
+      if (String(reqs.rows[j].email).trim().toLowerCase() === buyerEmail &&
+          String(reqs.rows[j].status).toLowerCase() === 'fulfilled' &&
+          String(reqs.rows[j].request_id).trim() !== orderRef) priorConfirmed++;
+    }
+    if (priorConfirmed > 0) return null;
+  }
+
+  appendRowObject_(TAB_LEDGER, {
+    entry_id: 'LED-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 900 + 100),
+    referrer_ref_code: referrer.row.ref_code, referrer_email: referrerEmail, buyer_email: buyerEmail,
+    product_id: reqRow.product_id, order_ref: orderRef, amount: cfg.referral_amount, status: 'available',
+    reward_type: cfg.reward_type, created_at: new Date().toISOString(), confirmed_at: new Date().toISOString(),
+    paid_at: '', notes: ''
+  });
+  return { referrer_ref_code: referrer.row.ref_code, amount: cfg.referral_amount };
 }
 
 function adminDeleteRequest_(body) {
@@ -1602,12 +1696,13 @@ function dispatchStudent_(action, body) {
     case 'studentLogout':        return studentLogout_(body);
     case 'getStudentProfile':    return getStudentProfile_(email);
     case 'updateStudentProfile': return updateStudentProfile_(email, body);
-    // Dashboard + payout endpoints arrive in a later stage:
-    case 'getMyReferralInfo':
-    case 'getMyReferrals':
-    case 'requestPayout':
-    case 'getMyPurchases':
-      return { ok: false, error: 'not_implemented_yet' };
+    case 'getMyReferralInfo':    return getMyReferralInfo_(email);
+    case 'getMyReferrals':       return getMyReferrals_(email);
+    case 'requestPayout':        return requestPayout_(email, body);
+    case 'getMyLibrary':         return getMyLibrary_(email);
+    case 'getMyPurchases':       return getMyLibrary_(email);
+    case 'getMyQuiz':            return getMyQuiz_(email, body);
+    case 'gradeMyQuiz':          return gradeMyQuiz_(email, body);
     default: return { ok: false, error: 'Unknown student action.' };
   }
 }
@@ -1632,4 +1727,318 @@ function updateStudentProfile_(email, body) {
   if (body.gcash_number != null) fields.gcash_number = String(body.gcash_number).trim().substring(0, 30);
   updateRowFields_(TAB_STUDENTS, s.rowIndex, fields);
   return { ok: true, profile: studentProfile_(findStudentByEmail_(email).row) };
+}
+
+/* ===========================================================================
+ * Student: account library (code-free access) + quiz play + referral dashboard
+ * ======================================================================== */
+
+function scopeCovers_(scope, quizId) {
+  scope = String(scope || '').trim().toLowerCase();
+  var q = String(quizId || '').trim().toLowerCase();
+  if (!scope || !q) return false;
+  return scope === 'all' || scope === q || q.indexOf(scope + '-') === 0;
+}
+
+function entitlementsFor_(email) {
+  var e = String(email || '').trim().toLowerCase();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_ENTITLEMENTS)) return [];
+  var t = readTable_(TAB_ENTITLEMENTS, ['email', 'scope', 'status']);
+  var out = [];
+  for (var i = 0; i < t.rows.length; i++) {
+    if (String(t.rows[i].email).trim().toLowerCase() === e &&
+        String(t.rows[i].status).toLowerCase() !== 'disabled') out.push(t.rows[i]);
+  }
+  return out;
+}
+
+/** Count a student's graded submissions for a quiz (from the Attempts log). */
+function myQuizAttempts_(email, quizId) {
+  var e = String(email || '').trim().toLowerCase();
+  var q = String(quizId || '').trim().toLowerCase();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(TAB_ATTEMPTS);
+  if (!sheet) return 0;
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return 0;
+  var headers = values[0].map(function (h) { return String(h).trim(); });
+  var ei = headers.indexOf('email'), qi = headers.indexOf('quiz_id');
+  if (ei === -1 || qi === -1) return 0;
+  var n = 0;
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][ei]).trim().toLowerCase() === e &&
+        String(values[r][qi]).trim().toLowerCase() === q) n++;
+  }
+  return n;
+}
+
+function logMyAttempt_(email, quizId, score, total) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(TAB_ATTEMPTS);
+  if (!sheet) { sheet = ss.insertSheet(TAB_ATTEMPTS); sheet.appendRow(['timestamp', 'code', 'quiz_id', 'score', 'total', 'email']); }
+  ensureColumns_(TAB_ATTEMPTS, ['email']);
+  appendRowObject_(TAB_ATTEMPTS, { timestamp: new Date(), code: '', quiz_id: quizId, score: score, total: total, email: email });
+}
+
+var MY_ATTEMPTS_MAX = 2;
+
+function isEntitledToQuiz_(email, quizId) {
+  var ents = entitlementsFor_(email);
+  for (var i = 0; i < ents.length; i++) {
+    if (String(ents[i].type).toLowerCase() !== 'material' && scopeCovers_(ents[i].scope, quizId)) return true;
+  }
+  return false;
+}
+
+function getMyLibrary_(email) {
+  var ents = entitlementsFor_(email);
+  var quizzesOut = [], materials = [], seen = {};
+  var allQuizzes = getQuizList_(); // [{quiz_id, quiz_title, subject, timer_minutes, question_count}]
+  for (var i = 0; i < ents.length; i++) {
+    var ent = ents[i];
+    if (String(ent.type).toLowerCase() === 'material') {
+      materials.push({ product_id: ent.product_id, title: ent.title });
+      continue;
+    }
+    for (var j = 0; j < allQuizzes.length; j++) {
+      var qz = allQuizzes[j];
+      if (seen[qz.quiz_id]) continue;
+      if (scopeCovers_(ent.scope, qz.quiz_id)) {
+        seen[qz.quiz_id] = true;
+        var used = myQuizAttempts_(email, qz.quiz_id);
+        quizzesOut.push({
+          quiz_id: qz.quiz_id, quiz_title: qz.quiz_title, subject: qz.subject,
+          timer_minutes: qz.timer_minutes, attempts_used: used,
+          attempts_left: Math.max(0, MY_ATTEMPTS_MAX - used)
+        });
+      }
+    }
+  }
+  return { ok: true, library: { quizzes: quizzesOut, materials: materials } };
+}
+
+function getMyQuiz_(email, body) {
+  var quizId = String(body.quizId || body.quiz_id || '').trim();
+  if (!quizId) return { ok: false, error: 'No quiz specified.' };
+  if (!isEntitledToQuiz_(email, quizId)) return { ok: false, error: 'You don\'t have access to this quiz. It may not be in your purchases.' };
+  if (myQuizAttempts_(email, quizId) >= MY_ATTEMPTS_MAX) return { ok: false, error: 'You\'ve used all ' + MY_ATTEMPTS_MAX + ' attempts for this quiz.' };
+
+  var questions = getQuestionsForQuiz_(quizId);
+  if (!questions.length) return { ok: false, error: 'This quiz has no questions yet.' };
+  var meta = questions[0], timer = 0;
+  for (var k = 0; k < questions.length; k++) { var tm = toNum_(questions[k].timer_minutes, 0); if (tm > 0) { timer = tm; break; } }
+  var safe = questions.map(function (q) {
+    return { question_number: toNum_(q.question_number, 0), question_text: q.question_text, options: buildOptions_(q) };
+  }).sort(function (a, b) { return a.question_number - b.question_number; });
+  return { ok: true, quiz: { quiz_id: quizId, quiz_title: meta.quiz_title || quizId, subject: meta.subject || '', timer_minutes: timer, attempts_left: MY_ATTEMPTS_MAX - myQuizAttempts_(email, quizId), questions: safe } };
+}
+
+function gradeMyQuiz_(email, body) {
+  var quizId = String(body.quizId || body.quiz_id || '').trim();
+  var answers = (body.answers && typeof body.answers === 'object') ? body.answers : {};
+  if (!quizId) return { ok: false, error: 'No quiz specified.' };
+  if (!isEntitledToQuiz_(email, quizId)) return { ok: false, error: 'You don\'t have access to this quiz.' };
+  if (myQuizAttempts_(email, quizId) >= MY_ATTEMPTS_MAX) return { ok: false, error: 'You\'ve used all ' + MY_ATTEMPTS_MAX + ' attempts for this quiz.' };
+
+  var questions = getQuestionsForQuiz_(quizId);
+  if (!questions.length) return { ok: false, error: 'This quiz has no questions to grade.' };
+  questions.sort(function (a, b) { return toNum_(a.question_number, 0) - toNum_(b.question_number, 0); });
+  var results = [], score = 0;
+  for (var i = 0; i < questions.length; i++) {
+    var q = questions[i], qn = toNum_(q.question_number, 0);
+    var correct = String(q.correct_option || '').trim().toUpperCase();
+    var your = String(answers[String(qn)] || answers[qn] || '').trim().toUpperCase();
+    var ok = (your !== '' && your === correct); if (ok) score++;
+    results.push({ question_number: qn, your_answer: your, correct_option: correct, is_correct: ok, explanation: q.explanation || '' });
+  }
+  try { logMyAttempt_(email, quizId, score, questions.length); } catch (e) {}
+  var left = Math.max(0, MY_ATTEMPTS_MAX - myQuizAttempts_(email, quizId));
+  return { ok: true, score: score, total: questions.length, attempts_left: left, results: results };
+}
+
+/* ---- Referral dashboard data ---- */
+function maskEmail_(e) {
+  e = String(e || '');
+  var at = e.indexOf('@'); if (at < 1) return '***';
+  return e.charAt(0) + '***' + e.substring(at);
+}
+
+function ledgerForReferrer_(email) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_LEDGER)) return [];
+  var t = readTable_(TAB_LEDGER, ['referrer_email', 'status']);
+  var e = String(email).trim().toLowerCase(), out = [];
+  for (var i = 0; i < t.rows.length; i++) {
+    if (String(t.rows[i].referrer_email).trim().toLowerCase() === e) out.push(t.rows[i]);
+  }
+  return out;
+}
+
+function getMyReferralInfo_(email) {
+  var s = findStudentByEmail_(email);
+  if (!s) return { ok: false, error: 'session_expired' };
+  var refCode = s.row.ref_code;
+  var entries = ledgerForReferrer_(email);
+  var pending = 0, available = 0, paid = 0, purchases = 0;
+  for (var i = 0; i < entries.length; i++) {
+    var st = String(entries[i].status).toLowerCase(), amt = toNum_(entries[i].amount, 0);
+    if (st === 'void') continue;
+    purchases++;
+    if (st === 'pending') pending += amt;
+    else if (st === 'paid') paid += amt;
+    else available += amt; // 'available' (default)
+  }
+  // count distinct students referred by this code
+  var referred = 0;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(TAB_STUDENTS)) {
+    var st2 = readTable_(TAB_STUDENTS, ['referred_by']);
+    for (var j = 0; j < st2.rows.length; j++) if (String(st2.rows[j].referred_by).trim().toLowerCase() === String(refCode).toLowerCase()) referred++;
+  }
+  var cfg = refConfig_();
+  return {
+    ok: true, ref_code: refCode, referral_link: referralLinkFor_(refCode),
+    counts: { referred: referred, purchases: purchases },
+    earnings: { pending: pending, available: available, paid: paid, currency: 'PHP' },
+    config: { amount: cfg.referral_amount, reward_type: cfg.reward_type, payout_threshold: cfg.payout_threshold }
+  };
+}
+
+function getMyReferrals_(email) {
+  var entries = ledgerForReferrer_(email);
+  var list = entries.map(function (r) {
+    return { buyer: maskEmail_(r.buyer_email), product_id: r.product_id, amount: toNum_(r.amount, 0),
+      status: r.status, date: r.confirmed_at || r.created_at };
+  }).reverse();
+  return { ok: true, referrals: list };
+}
+
+function requestPayout_(email, body) {
+  var cfg = refConfig_();
+  if (cfg.reward_type !== 'cash') return { ok: false, error: 'credit_mode' };
+  var entries = ledgerForReferrer_(email);
+  var available = 0;
+  for (var i = 0; i < entries.length; i++) if (String(entries[i].status).toLowerCase() === 'available') available += toNum_(entries[i].amount, 0);
+  if (available < cfg.payout_threshold) return { ok: false, error: 'below_threshold', available: available, threshold: cfg.payout_threshold };
+  var gc = String(body.gcash_number || '').trim();
+  var s = findStudentByEmail_(email);
+  if (s && gc) updateRowFields_(TAB_STUDENTS, s.rowIndex, { gcash_number: gc });
+  props_().setProperty('payoutreq:' + String(email).toLowerCase(), JSON.stringify({ amount: available, gcash: gc, ts: Date.now() }));
+  return { ok: true, requested: available };
+}
+
+/* ===========================================================================
+ * Admin: referral management (balances, ledger, payouts, void, config)
+ * ======================================================================== */
+
+function allLedger_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_LEDGER)) return { rows: [] };
+  return readTable_(TAB_LEDGER, LEDGER_COLS.slice(0, 8));
+}
+
+function adminListReferralBalances_() {
+  var led = allLedger_();
+  var byRef = {}; // referrer_email -> aggregate
+  for (var i = 0; i < led.rows.length; i++) {
+    var r = led.rows[i];
+    var em = String(r.referrer_email).trim().toLowerCase();
+    if (!em) continue;
+    if (!byRef[em]) byRef[em] = { email: em, ref_code: r.referrer_ref_code, available: 0, paid: 0, pending: 0 };
+    var st = String(r.status).toLowerCase(), amt = toNum_(r.amount, 0);
+    if (st === 'void') continue;
+    if (st === 'paid') byRef[em].paid += amt;
+    else if (st === 'pending') byRef[em].pending += amt;
+    else byRef[em].available += amt;
+  }
+  // enrich with student info + payout request flag + referred count
+  var students = {};
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(TAB_STUDENTS)) {
+    var st2 = readTable_(TAB_STUDENTS, ['email', 'ref_code']);
+    for (var j = 0; j < st2.rows.length; j++) students[String(st2.rows[j].email).trim().toLowerCase()] = st2.rows[j];
+  }
+  var out = [];
+  for (var key in byRef) {
+    if (!byRef.hasOwnProperty(key)) continue;
+    var b = byRef[key];
+    var stu = students[key] || {};
+    var referred = 0;
+    if (ss.getSheetByName(TAB_STUDENTS)) {
+      var st3 = readTable_(TAB_STUDENTS, ['referred_by']);
+      for (var k = 0; k < st3.rows.length; k++) if (String(st3.rows[k].referred_by).trim().toLowerCase() === String(b.ref_code).toLowerCase()) referred++;
+    }
+    var hasReq = props_().getProperty('payoutreq:' + key) ? true : false;
+    out.push({ email: b.email, ref_code: b.ref_code, referred_count: referred,
+      available: b.available, paid: b.paid, pending: b.pending,
+      gcash_number: stu.gcash_number || '', has_payout_request: hasReq });
+  }
+  out.sort(function (a, b) { return b.available - a.available; });
+  return { ok: true, balances: out };
+}
+
+function adminListLedger_(body) {
+  var led = readTableSafe_(TAB_LEDGER, LEDGER_COLS);
+  var filterStatus = String((body && body.status) || '').toLowerCase();
+  var filterEmail = String((body && body.email) || '').trim().toLowerCase();
+  var rows = led.filter(function (r) {
+    if (filterStatus && String(r.status).toLowerCase() !== filterStatus) return false;
+    if (filterEmail && String(r.referrer_email).toLowerCase() !== filterEmail && String(r.buyer_email).toLowerCase() !== filterEmail) return false;
+    return true;
+  }).map(function (r) {
+    return { entry_id: r.entry_id, referrer_ref_code: r.referrer_ref_code, referrer_email: r.referrer_email,
+      buyer_email: r.buyer_email, product_id: r.product_id, order_ref: r.order_ref, amount: toNum_(r.amount, 0),
+      status: r.status, reward_type: r.reward_type, created_at: r.created_at, confirmed_at: r.confirmed_at,
+      paid_at: r.paid_at, notes: r.notes };
+  }).reverse();
+  return { ok: true, ledger: rows };
+}
+
+function readTableSafe_(name, cols) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(name)) return [];
+  return readTable_(name, cols.slice(0, 1)).rows;
+}
+
+function adminMarkPayout_(body) {
+  var email = String(body.email || '').trim().toLowerCase();
+  if (!email) return { ok: false, error: 'email is required.' };
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_LEDGER)) return { ok: false, error: 'No ledger yet.' };
+  var t = readTable_(TAB_LEDGER, ['referrer_email', 'status']);
+  var n = 0, now = new Date().toISOString();
+  for (var i = 0; i < t.rows.length; i++) {
+    if (String(t.rows[i].referrer_email).trim().toLowerCase() === email &&
+        String(t.rows[i].status).toLowerCase() === 'available') {
+      updateRowFields_(TAB_LEDGER, t.rows[i].__row, { status: 'paid', paid_at: now });
+      n++;
+    }
+  }
+  props_().deleteProperty('payoutreq:' + email);
+  return { ok: true, marked_paid: n };
+}
+
+function adminVoidLedgerEntry_(body) {
+  var id = String(body.entry_id || '').trim();
+  if (!id) return { ok: false, error: 'entry_id is required.' };
+  var found = findRow_(TAB_LEDGER, 'entry_id', id);
+  if (!found) return { ok: false, error: 'Ledger entry not found.' };
+  updateRowFields_(TAB_LEDGER, found.rowIndex, { status: 'void', notes: String(body.reason || 'voided').trim() });
+  return { ok: true };
+}
+
+function adminGetReferralConfig_() {
+  return { ok: true, config: refConfig_() };
+}
+
+function adminUpdateReferralConfig_(body) {
+  var allowed = { referral_amount: 1, reward_type: 1, payout_threshold: 1, reward_on: 1, require_account_to_buy: 1 };
+  var wrote = 0;
+  for (var key in body) {
+    if (!body.hasOwnProperty(key) || !allowed[key]) continue;
+    var res = adminUpdateSettings_({ key: key, value: String(body[key]) });
+    if (res.ok) wrote++;
+  }
+  return { ok: true, updated: wrote, config: refConfig_() };
 }

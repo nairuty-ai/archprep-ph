@@ -307,5 +307,54 @@ check("profile reflects update", post("getStudentProfile", { token: sTok1 }).pro
 check("student logout ok", post("studentLogout", { token: sTok1 }).ok === true);
 check("token invalid after logout", post("getStudentProfile", { token: sTok1 }).error === "session_expired");
 
+/* ============ Entitlements + referral attribution + code-free play ============ */
+console.log("Entitlements + referral attribution:");
+post("studentRequestCode", { email: "buyer2@example.com" });
+const bTok = post("studentVerifyCode", { email: "buyer2@example.com", code: lastOtp }).token;
+const rq2 = post("requestAccess", { email: "buyer2@example.com", product_id: "quiz-structural", ref: ref1 });
+check("requestAccess with ref ok", rq2.ok === true);
+const reqRow = A("adminListRequests").requests.find((r) => r.email === "buyer2@example.com");
+const ff = A("adminFulfillRequest", { request_id: reqRow.request_id });
+check("confirm grants reward to referrer (₱9)", ff.ok && ff.reward && ff.reward.amount === 9);
+
+console.log("Code-free library + quiz play:");
+const lib = post("getMyLibrary", { token: bTok });
+check("library shows entitled quiz structural-1", lib.ok && lib.library.quizzes.some((q) => q.quiz_id === "structural-1"));
+check("attempts_left starts at 2", lib.library.quizzes.find((q) => q.quiz_id === "structural-1").attempts_left === 2);
+const mq = post("getMyQuiz", { token: bTok, quizId: "structural-1" });
+check("getMyQuiz (no code) ok + NO answer key", mq.ok && !JSON.stringify(mq).includes("correct_option"));
+check("getMyQuiz refused for un-owned quiz (mock-1)", post("getMyQuiz", { token: bTok, quizId: "mock-1" }).ok === false);
+const g1 = post("gradeMyQuiz", { token: bTok, quizId: "structural-1", answers: { "1": "B" } });
+check("gradeMyQuiz attempt 1 ok, 1 left", g1.ok && g1.attempts_left === 1);
+post("gradeMyQuiz", { token: bTok, quizId: "structural-1", answers: { "1": "B" } });
+check("attempt 3 refused (2-attempt cap)", post("gradeMyQuiz", { token: bTok, quizId: "structural-1", answers: { "1": "B" } }).ok === false);
+
+console.log("Referrer dashboard + guards:");
+post("studentRequestCode", { email: "stud1@example.com" });
+const s1b = post("studentVerifyCode", { email: "stud1@example.com", code: lastOtp }).token;
+const info = post("getMyReferralInfo", { token: s1b });
+check("referrer available >= 9", info.ok && info.earnings.available >= 9);
+const refsList = post("getMyReferrals", { token: s1b });
+check("buyer email masked to referrer", refsList.ok && refsList.referrals.length >= 1 && /\*\*\*/.test(refsList.referrals[0].buyer));
+A("adminFulfillRequest", { request_id: reqRow.request_id }); // confirm again
+check("idempotent: no double reward", post("getMyReferralInfo", { token: s1b }).earnings.available === info.earnings.available);
+
+post("studentRequestCode", { email: "selfbuy@example.com" });
+const selfV = post("studentVerifyCode", { email: "selfbuy@example.com", code: lastOtp });
+post("requestAccess", { email: "selfbuy@example.com", product_id: "quiz-structural", ref: selfV.profile.ref_code });
+const selfReqId = A("adminListRequests").requests.find((r) => r.email === "selfbuy@example.com").request_id;
+const selfFf = A("adminFulfillRequest", { request_id: selfReqId });
+check("self-referral earns nothing", !selfFf.reward);
+
+console.log("Admin referral management:");
+const bal = A("adminListReferralBalances");
+check("admin sees referrer balance", bal.ok && bal.balances.some((b) => b.email === "stud1@example.com" && b.available >= 9));
+const mk = A("adminMarkPayout", { email: "stud1@example.com" });
+check("mark payout flips available -> paid", mk.ok && mk.marked_paid >= 1);
+const info3 = post("getMyReferralInfo", { token: s1b });
+check("after payout: available 0, paid >= 9", info3.earnings.available === 0 && info3.earnings.paid >= 9);
+const cfg = A("adminGetReferralConfig");
+check("referral config readable (amount 9)", cfg.ok && cfg.config.referral_amount === 9);
+
 console.log(`\n=== ${pass} passed, ${fail} failed ===`);
 process.exit(fail ? 1 : 0);
