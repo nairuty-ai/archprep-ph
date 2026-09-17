@@ -669,3 +669,13 @@ body.admin { background: #EEF1F3; }
 @media (max-width: 820px) {
   .cursor-dot, .cursor-ring { display: none; } /* touch: native only */
 }
+
+/* ---- Account rewards stats ---- */
+.reward-stats { display: flex; gap: 1rem; flex-wrap: wrap; }
+.reward-stat { flex: 1; min-width: 90px; background: #F4F1EA; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .85rem 1rem; text-align: center; }
+.reward-num { font-family: var(--font-head); font-size: var(--fs-xl); color: var(--accent); line-height: 1; }
+.reward-label { font-size: var(--fs-xs); color: var(--muted); font-weight: 700; margin-top: .3rem; }
+
+/* Sitewide "refer & earn" ribbon entry point */
+.refer-ribbon { display: block; background: linear-gradient(135deg, var(--secondary), var(--secondary-dark)); color: #fff; text-align: center; padding: .6rem 1rem; font-weight: 700; font-size: var(--fs-sm); text-decoration: none; }
+.refer-ribbon:hover { color: #fff; filter: brightness(1.06); }

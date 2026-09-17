@@ -165,13 +165,25 @@ function renderDashboard(p) {
   refCard.appendChild(el("p", { class: "muted", attrs: { style: "margin-top:1rem;margin-bottom:0" }, text: "Your code: " + p.ref_code }));
   wrap.appendChild(refCard);
 
-  // Earnings (full data arrives in a later stage; show a friendly placeholder)
+  // My Library (code-free access to purchased quizzes/materials) — shown first
+  const libCard = el("div", { class: "quiz-card", attrs: { style: "margin-bottom:1.25rem" } });
+  libCard.appendChild(el("h2", { text: "My library" }));
+  libCard.appendChild(el("div", { attrs: { id: "library-box" }, class: "state", children: [
+    el("div", { class: "spinner", attrs: { "aria-hidden": "true" } }),
+    el("p", { class: "mb-0", text: "Loading your purchases…" }),
+  ]}));
+  wrap.insertBefore(libCard, refCard);
+
+  // Rewards (referral earnings + payout / credit)
   const earn = el("div", { class: "quiz-card", attrs: { style: "margin-bottom:1.25rem" } });
   earn.appendChild(el("h2", { text: "Your rewards" }));
-  earn.appendChild(el("div", { class: "alert alert--info mb-0", attrs: { id: "earn-box" },
-    text: "Your referrals and earnings will appear here." }));
+  earn.appendChild(el("div", { attrs: { id: "rewards-box" }, class: "state", children: [
+    el("div", { class: "spinner", attrs: { "aria-hidden": "true" } }),
+    el("p", { class: "mb-0", text: "Loading…" }),
+  ]}));
   wrap.appendChild(earn);
-  loadEarnings();
+  loadLibrary();
+  loadRewards();
 
   // Profile
   const prof = el("div", { class: "quiz-card" });
@@ -203,26 +215,104 @@ function renderDashboard(p) {
   root().replaceChildren(wrap);
 }
 
-/* Earnings summary — gracefully handles the not-yet-implemented stage. */
-async function loadEarnings() {
-  const res = await sPost("getMyReferralInfo", {});
-  const box = document.getElementById("earn-box");
+/* ---- My Library: purchased quizzes (code-free) + materials ---- */
+async function loadLibrary() {
+  const res = await sPost("getMyLibrary", {});
+  const box = document.getElementById("library-box");
   if (!box) return;
-  if (res && res.ok) {
-    const e = res.earnings || {};
-    box.classList.remove("alert--info");
-    box.replaceChildren(
-      el("div", { children: [
-        el("strong", { text: `Referred: ${res.counts ? res.counts.referred : 0}` }),
-        document.createTextNode("  ·  "),
-        el("span", { text: `Available: ₱${e.available || 0}` }),
-        document.createTextNode("  ·  "),
-        el("span", { text: `Pending: ₱${e.pending || 0}` }),
-        document.createTextNode("  ·  "),
-        el("span", { text: `Paid: ₱${e.paid || 0}` }),
-      ]})
-    );
-  } else if (res && res.error === "not_implemented_yet") {
-    box.textContent = "Your referrals and earnings will appear here once the rewards dashboard is switched on.";
+  box.className = "";
+  if (!res || !res.ok) { box.replaceChildren(el("p", { class: "muted mb-0", text: "Couldn't load your library." })); return; }
+  const quizzes = (res.library && res.library.quizzes) || [];
+  const materials = (res.library && res.library.materials) || [];
+  box.replaceChildren();
+
+  if (!quizzes.length && !materials.length) {
+    box.appendChild(el("div", { class: "alert alert--info mb-0", children: [
+      document.createTextNode("You haven't purchased anything yet. "),
+      el("a", { text: "Browse quizzes →", attrs: { href: "quizzes.html" } }),
+    ]}));
+    return;
+  }
+
+  if (quizzes.length) {
+    box.appendChild(el("p", { class: "eyebrow", text: "Quizzes" }));
+    const list = el("div", { class: "row-list" });
+    quizzes.forEach((qz) => {
+      const left = Number(qz.attempts_left);
+      const main = el("div", { class: "row-main", children: [
+        el("h4", { text: qz.quiz_title }),
+        el("div", { class: "row-meta", text: `${qz.subject || ""} · ${left} of 2 attempts left` }),
+      ]});
+      const actions = el("div", { class: "row-actions" });
+      if (left > 0) {
+        actions.appendChild(el("a", { class: "btn btn--primary btn--sm", text: "Start quiz",
+          attrs: { href: "quiz.html?mine=" + encodeURIComponent(qz.quiz_id) } }));
+      } else {
+        actions.appendChild(el("span", { class: "badge draft", text: "No attempts left" }));
+      }
+      list.appendChild(el("div", { class: "row-item", children: [main, actions] }));
+    });
+    box.appendChild(list);
+  }
+  if (materials.length) {
+    box.appendChild(el("p", { class: "eyebrow", attrs: { style: "margin-top:1rem" }, text: "Materials" }));
+    const ml = el("div", { class: "row-list" });
+    materials.forEach((mm) => ml.appendChild(el("div", { class: "row-item", children: [
+      el("div", { class: "row-main", children: [
+        el("h4", { text: mm.title }),
+        el("div", { class: "row-meta", text: "Delivered to your email by our team." }),
+      ]}),
+    ]})));
+    box.appendChild(ml);
+  }
+}
+
+/* ---- Rewards: earnings, progress to payout, request payout / credit note ---- */
+function stat(value, label) {
+  return el("div", { class: "reward-stat", children: [
+    el("div", { class: "reward-num", text: String(value) }),
+    el("div", { class: "reward-label", text: label }),
+  ]});
+}
+
+async function loadRewards() {
+  const res = await sPost("getMyReferralInfo", {});
+  const box = document.getElementById("rewards-box");
+  if (!box) return;
+  box.className = "";
+  if (!res || !res.ok) { box.replaceChildren(el("p", { class: "muted mb-0", text: "Couldn't load rewards." })); return; }
+  const e = res.earnings || {}, c = res.counts || {}, cfg = res.config || {};
+  const threshold = Number(cfg.payout_threshold) || 100;
+  const isCash = (cfg.reward_type || "cash") === "cash";
+  box.replaceChildren();
+
+  box.appendChild(el("div", { class: "reward-stats", children: [
+    stat(c.referred || 0, "Friends referred"),
+    stat("₱" + (e.available || 0), isCash ? "Available" : "Credit"),
+    stat("₱" + (e.paid || 0), isCash ? "Paid out" : "Redeemed"),
+  ]}));
+
+  if (isCash) {
+    const pct = Math.min(100, Math.round(((e.available || 0) / threshold) * 100));
+    box.appendChild(el("p", { class: "muted", attrs: { style: "margin:.75rem 0 .25rem" },
+      text: `₱${e.available || 0} of ₱${threshold} needed to cash out` }));
+    const bar = el("div", { class: "progress-bar" }); bar.appendChild(el("span", { attrs: { style: "width:" + pct + "%" } }));
+    box.appendChild(bar);
+    const payBtn = el("button", { class: "btn btn--primary", attrs: { style: "margin-top:1rem" }, text: "Request payout" });
+    payBtn.disabled = (e.available || 0) < threshold;
+    if (payBtn.disabled) payBtn.title = "Reach ₱" + threshold + " to cash out";
+    payBtn.addEventListener("click", async () => {
+      const gcEl = document.getElementById("p-gc");
+      const gc = gcEl ? gcEl.value.trim() : "";
+      if (!gc) return toast("Add your GCash number in Profile below and Save first.", "err");
+      payBtn.disabled = true; payBtn.textContent = "Requesting…";
+      const r = await sPost("requestPayout", { gcash_number: gc });
+      if (r && r.ok) { toast("Payout requested! We'll send ₱" + r.requested + " to your GCash and mark it here."); loadRewards(); }
+      else { payBtn.disabled = false; payBtn.textContent = "Request payout"; toast((r && r.error === "below_threshold") ? "You're below the payout threshold." : "Couldn't request payout.", "err"); }
+    });
+    box.appendChild(payBtn);
+  } else {
+    box.appendChild(el("p", { class: "muted mb-0", attrs: { style: "margin-top:.75rem" },
+      text: "Your credit is applied to your next order by our team. Keep sharing to earn more!" }));
   }
 }

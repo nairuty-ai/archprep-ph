@@ -13,11 +13,14 @@ import {
 } from "./ui.js";
 
 const root = $("#quiz-root");
+const STUDENT_TOKEN_KEY = "archprep_student_token";
+const STUDENT_EXP_KEY = "archprep_student_expires";
 
 // In-memory state only (no persistence — Section 13.7 anti-cheat)
 const state = {
   quizId: null,
   code: null,
+  mine: false,         // true = logged-in code-free play (account entitlement)
   quiz: null,          // { quiz_id, quiz_title, subject, questions: [...] }
   answers: {},         // { "1": "B", ... }
   index: 0,
@@ -25,12 +28,47 @@ const state = {
   remaining: 0,
 };
 
+function studentToken() {
+  const t = localStorage.getItem(STUDENT_TOKEN_KEY) || "";
+  const exp = Number(localStorage.getItem(STUDENT_EXP_KEY) || 0);
+  return (t && exp > Date.now()) ? t : "";
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   if (!root) return;
+  // Code-free path: /quiz.html?mine=<quiz_id> for a logged-in student who owns it.
+  const mine = (qparam("mine") || "").trim();
+  if (mine && studentToken()) {
+    state.quizId = mine;
+    state.mine = true;
+    loadMyQuiz();
+    return;
+  }
   // Pre-select a quiz if linked from the catalogue (?quiz=structural-1)
   state.quizId = (qparam("quiz") || "").trim() || null;
   renderCodeEntry();
 });
+
+/* Code-free load for logged-in owners (uses the student token, no code). */
+async function loadMyQuiz() {
+  renderLoading(root, "Loading your quiz…");
+  try {
+    const res = await apiPost("getMyQuiz", { token: studentToken(), quizId: state.quizId });
+    if (!res || res.ok === false) {
+      if (res && res.error === "session_expired") { window.location.href = "account.html"; return; }
+      return renderError(root, (res && res.error) || "We couldn't load this quiz.", () => (window.location.href = "account.html"));
+    }
+    const quiz = res.quiz;
+    if (!quiz || !Array.isArray(quiz.questions) || !quiz.questions.length) {
+      return renderError(root, "This quiz doesn't have any questions yet.", () => (window.location.href = "account.html"));
+    }
+    state.quiz = quiz; state.answers = {}; state.index = 0;
+    startTimerIfNeeded();
+    renderQuestion();
+  } catch (err) {
+    renderError(root, err.message || "We couldn't load the quiz.", () => loadMyQuiz());
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* 1. Code-entry screen                                               */
@@ -292,11 +330,9 @@ async function submitQuiz(triggerBtn) {
   if (triggerBtn) { triggerBtn.disabled = true; triggerBtn.textContent = "Submitting…"; }
   renderLoading(root, "Grading your quiz…");
   try {
-    const res = await apiPost("gradeQuiz", {
-      quizId: state.quizId,
-      code: state.code,
-      answers: state.answers,
-    });
+    const res = state.mine
+      ? await apiPost("gradeMyQuiz", { token: studentToken(), quizId: state.quizId, answers: state.answers })
+      : await apiPost("gradeQuiz", { quizId: state.quizId, code: state.code, answers: state.answers });
     if (!res || res.ok === false) {
       return renderError(root, (res && res.error) || "We couldn't grade your quiz. Please try again.",
         () => renderReview());
@@ -362,10 +398,18 @@ function renderResults(res) {
   wrap.appendChild(list);
 
   const actions = el("div", { class: "quiz-nav", attrs: { style: "margin-top:1.5rem" } });
-  actions.appendChild(el("a", { class: "btn btn--outline", text: "← Back to quizzes", attrs: { href: "quizzes.html" } }));
-  const retry = el("button", { class: "btn btn--ghost", text: "Take another quiz", attrs: { type: "button" } });
-  retry.addEventListener("click", () => { state.quiz = null; state.answers = {}; state.code = null; renderCodeEntry(); });
-  actions.appendChild(retry);
+  if (state.mine) {
+    actions.appendChild(el("a", { class: "btn btn--outline", text: "← Back to my library", attrs: { href: "account.html" } }));
+    if (res.attempts_left != null) {
+      actions.appendChild(el("span", { class: "count", attrs: { style: "align-self:center" },
+        text: `${res.attempts_left} attempt${res.attempts_left === 1 ? "" : "s"} left` }));
+    }
+  } else {
+    actions.appendChild(el("a", { class: "btn btn--outline", text: "← Back to quizzes", attrs: { href: "quizzes.html" } }));
+    const retry = el("button", { class: "btn btn--ghost", text: "Take another quiz", attrs: { type: "button" } });
+    retry.addEventListener("click", () => { state.quiz = null; state.answers = {}; state.code = null; renderCodeEntry(); });
+    actions.appendChild(retry);
+  }
   wrap.appendChild(actions);
 
   root.replaceChildren(wrap);

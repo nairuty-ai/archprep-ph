@@ -202,6 +202,7 @@ function selectTab(name) {
   else if (name === "quizzes") renderQuizzes();
   else if (name === "products") renderProducts();
   else if (name === "codes") renderCodes();
+  else if (name === "referrals") renderReferrals();
   else if (name === "settings") renderSettings();
 }
 
@@ -1089,4 +1090,85 @@ function openBulkImport(p, data) {
 
   wrap.appendChild(form);
   p.replaceChildren(wrap);
+}
+
+/* ============================================================================
+ * REFERRALS section — balances, payouts, void, and config.
+ * ==========================================================================*/
+
+async function renderReferrals() {
+  const p = panel("referrals");
+  loadingState(p, "Loading referrals…");
+  const [bal, cfgRes] = await Promise.all([
+    adminPost("adminListReferralBalances", {}),
+    adminPost("adminGetReferralConfig", {}),
+  ]);
+  if (!bal.ok) { p.replaceChildren(emptyState("Couldn't load referrals", bal.error || "Try again.")); return; }
+
+  const wrap = el("div");
+  wrap.appendChild(sectionHead("Referrals", null));
+
+  // Config controls
+  const cfg = (cfgRes && cfgRes.ok && cfgRes.config) || {};
+  const form = el("form", { class: "admin-form" });
+  form.appendChild(el("h3", { text: "Referral settings" }));
+  const amount = numberInput(cfg.referral_amount != null ? cfg.referral_amount : 9, { min: "0" });
+  const rtype = selectInput([{ value: "cash", label: "Cash (GCash payout)" }, { value: "credit", label: "Credit (toward their own orders)" }], cfg.reward_type || "cash");
+  const thresh = numberInput(cfg.payout_threshold != null ? cfg.payout_threshold : 100, { min: "0" });
+  const ron = selectInput([{ value: "every_purchase", label: "Every purchase" }, { value: "first_purchase_only", label: "First purchase only" }], cfg.reward_on || "every_purchase");
+  const r1 = el("div", { class: "row2" });
+  r1.appendChild(field("Reward amount (₱)", amount));
+  r1.appendChild(field("Reward type", rtype));
+  form.appendChild(r1);
+  const r2 = el("div", { class: "row2" });
+  r2.appendChild(field("Payout threshold (₱, cash)", thresh));
+  r2.appendChild(field("Reward on", ron));
+  form.appendChild(r2);
+  const saveCfg = el("button", { class: "btn btn--secondary", text: "Save settings", attrs: { type: "submit" } });
+  form.appendChild(saveCfg);
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    busy(saveCfg, true);
+    const r = await adminPost("adminUpdateReferralConfig", {
+      referral_amount: Number(amount.value) || 0, reward_type: rtype.value,
+      payout_threshold: Number(thresh.value) || 0, reward_on: ron.value,
+    });
+    busy(saveCfg, false);
+    toast(r.ok ? "Referral settings saved." : (r.error || "Save failed."), r.ok ? "ok" : "err");
+  });
+  wrap.appendChild(form);
+
+  // Balances
+  const balances = bal.balances || [];
+  wrap.appendChild(el("h3", { text: "Referrer balances" }));
+  if (!balances.length) {
+    wrap.appendChild(emptyState("No referral earnings yet", "When a referred friend's purchase is confirmed, it shows up here."));
+  } else {
+    const list = el("div", { class: "row-list" });
+    balances.forEach((b) => list.appendChild(balanceRow(b)));
+    wrap.appendChild(list);
+  }
+  p.replaceChildren(wrap);
+}
+
+function balanceRow(b) {
+  const badges = [];
+  if (b.has_payout_request) badges.push(el("span", { class: "badge disabled", text: "Payout requested" }));
+  const main = el("div", { class: "row-main", children: [
+    el("h4", { children: [document.createTextNode(b.email + "  "), ...badges] }),
+    el("div", { class: "row-meta", text:
+      `${b.ref_code} · ${b.referred_count} referred · available ₱${b.available} · paid ₱${b.paid}` +
+      (b.gcash_number ? ` · GCash ${b.gcash_number}` : " · no GCash on file") }),
+  ]});
+  const actions = el("div", { class: "row-actions" });
+  const pay = el("button", { class: "btn btn--primary btn--sm", text: "Mark paid (₱" + b.available + ")" });
+  pay.disabled = !(b.available > 0);
+  pay.addEventListener("click", async () => {
+    if (!(await confirmDialog(`Mark ₱${b.available} as paid to ${b.email}? Do this after you've sent the GCash transfer${b.gcash_number ? " to " + b.gcash_number : ""}.`, "Mark paid"))) return;
+    const r = await adminPost("adminMarkPayout", { email: b.email });
+    if (r.ok) { toast(`Marked ₱ paid (${r.marked_paid} entr${r.marked_paid === 1 ? "y" : "ies"}).`); renderReferrals(); }
+    else toast(r.error || "Failed.", "err");
+  });
+  actions.appendChild(pay);
+  return el("div", { class: "row-item", children: [main, actions] });
 }
