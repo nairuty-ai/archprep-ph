@@ -15,11 +15,13 @@ function seed() {
     ["mat-structural","material","Structural Design","Structural Notes","desc",199,"https://h/x","TRUE",10,"","Drive folder"],
     ["quiz-structural","quiz","Structural Design","Structural Quiz Pack","unlocks structural-*",149,"REPLACE_ME","TRUE",50,"structural",""],
     ["quiz-mock","quiz","All Subjects","Mock Series","unlocks mock-*",299,"REPLACE_ME","FALSE",60,"mock",""],
+    ["quiz-free","quiz","Demo","Free Demo Quiz","free, code-free via login",0,"","TRUE",1,"free",""],
   ];
   DB.Quizzes = [
     ["quiz_id","quiz_title","subject","question_number","question_text","option_a","option_b","option_c","option_d","correct_option","explanation"],
     ["structural-1","Structural — Quiz 1","Structural Design",1,"Permanent self-weight load?","Live","Dead","Wind","Seismic","B","Dead loads are permanent."],
     ["structural-1","Structural — Quiz 1","Structural Design",2,"Steel resists?","Compression","Tension","Weight","Fire","B","Steel carries tension."],
+    ["free-1","Free Demo Quiz","Demo",1,"Concrete is strong in?","Tension","Compression","Nothing","Bending","B","Concrete is strong in compression."],
   ];
   DB.AccessCodes = [
     ["code","scope","expiry_date","max_uses","uses_count","status","notes"],
@@ -134,7 +136,7 @@ check("getQuiz ok", pq.ok === true && pq.quiz.questions.length === 2);
 check("public getQuiz has NO correct_option", !JSON.stringify(pq).includes("correct_option"));
 check("public getQuiz has NO explanation text", !JSON.stringify(pq).includes("permanent."));
 check("getProducts excludes inactive quiz-mock", !get({ action: "getProducts" }).some((p) => p.product_id === "quiz-mock"));
-check("getProducts includes active ones", get({ action: "getProducts" }).length === 2);
+check("getProducts includes active ones (3: mat-structural, quiz-structural, quiz-free)", get({ action: "getProducts" }).length === 3);
 const grade = post("gradeQuiz", { quizId: "structural-1", code: "ARCH-7F3K", answers: { "1": "B", "2": "A" } });
 check("gradeQuiz still works (1/2)", grade.ok && grade.score === 1 && grade.total === 2);
 
@@ -345,6 +347,21 @@ post("requestAccess", { email: "selfbuy@example.com", product_id: "quiz-structur
 const selfReqId = A("adminListRequests").requests.find((r) => r.email === "selfbuy@example.com").request_id;
 const selfFf = A("adminFulfillRequest", { request_id: selfReqId });
 check("self-referral earns nothing", !selfFf.reward);
+
+console.log("Free product claim (code-free, no payment):");
+post("studentRequestCode", { email: "freeuser@example.com" });
+const fTok = post("studentVerifyCode", { email: "freeuser@example.com", code: lastOtp }).token;
+check("library empty before claim", post("getMyLibrary", { token: fTok }).library.quizzes.length === 0);
+const claim1 = post("claimFree", { token: fTok, productId: "quiz-free" });
+check("claimFree ok", claim1.ok === true);
+const claim2 = post("claimFree", { token: fTok, productId: "quiz-free" });
+check("claimFree idempotent (already=true)", claim2.ok === true && claim2.already === true);
+const flib = post("getMyLibrary", { token: fTok });
+check("free quiz free-1 now in library", flib.library.quizzes.some((q) => q.quiz_id === "free-1"));
+check("claimFree refuses a PAID product", post("claimFree", { token: fTok, productId: "quiz-structural" }).ok === false);
+check("claimFree needs a token (session)", post("claimFree", { productId: "quiz-free" }).error === "session_expired");
+const fmq = post("getMyQuiz", { token: fTok, quizId: "free-1" });
+check("can play claimed free quiz code-free (no answer leak)", fmq.ok && !JSON.stringify(fmq).includes("correct_option"));
 
 console.log("Admin referral management:");
 const bal = A("adminListReferralBalances");

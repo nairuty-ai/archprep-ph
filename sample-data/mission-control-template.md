@@ -39,8 +39,15 @@ Headers (row 1), in this order:
 | mat-history | material | History & Theory | History & Theory of Architecture — Review Notes | Key movements, Filipino architecture, and theory, summarised for fast revision. | 199 | REPLACE_ME_HITPAY_LINK | TRUE | 20 |
 | mat-proflaws | material | Professional Practice | Professional Practice & Laws — Review Notes | RA 9266, the Architecture Act, codes of ethics, and standard contracts, made simple. | 199 | REPLACE_ME_HITPAY_LINK | TRUE | 30 |
 | mat-bundle | material | All Subjects | All-Subjects Review Bundle | Every subject's review notes in one money-saving bundle. Best value for full prep. | 499 | REPLACE_ME_HITPAY_LINK | TRUE | 40 |
+| quiz-free | quiz | Demo | Free Demo Quiz | A short free quiz to try the login-based library. No code needed. | 0 | | TRUE | 1 |
 | quiz-structural | quiz | Structural Design | Structural Design — Quiz Pack | 3 practice quizzes with worked explanations for Structural Design. | 149 | REPLACE_ME_HITPAY_LINK | TRUE | 50 |
 | quiz-mock | quiz | All Subjects | Mock Test Series | 3 timed, mixed-subject mock exams that simulate the real ALE. | 299 | REPLACE_ME_HITPAY_LINK | TRUE | 60 |
+
+> Free products: set `price_php` to `0` and leave `hitpay_link` blank. On the
+> catalogue these show a **Get it free** button that sends the student to
+> `account.html?claim=<product_id>`. After they log in the item is added to
+> their library automatically (no payment, no code). The demo above unlocks the
+> `free-1` quiz via its `unlock_scope` of `free`.
 
 Notes:
 - `type` must be exactly `material` or `quiz`.
@@ -58,6 +65,17 @@ Headers (row 1), in this order:
 
 > 🔒 `correct_option` and `explanation` are **never sent to the browser** until a
 > student submits the quiz. They live only in this Sheet and in the grading step.
+
+### Free demo quiz — `free-1` (3 questions)
+
+Unlocked by the free `quiz-free` product (scope `free`). Great for testing the
+login-only, code-free library flow without any payment.
+
+| quiz_id | quiz_title | subject | question_number | question_text | option_a | option_b | option_c | option_d | correct_option | explanation | timer_minutes |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| free-1 | Free Demo Quiz | Demo | 1 | Which material is best known for high compressive strength but low tensile strength? | Steel | Concrete | Timber | Aluminium | B | Concrete resists compression well but is weak in tension, which is why it is reinforced with steel. | 0 |
+| free-1 | Free Demo Quiz | Demo | 2 | In the Philippines, which code governs the structural design of buildings? | NSCP | PEC | ASHRAE | NBCP | A | The National Structural Code of the Philippines (NSCP) governs structural design. | 0 |
+| free-1 | Free Demo Quiz | Demo | 3 | What does a load-bearing wall primarily do? | Divide rooms only | Carry loads to the foundation | Hold windows | Improve acoustics | B | A load-bearing wall transfers loads from above down to the foundation. | 0 |
 
 ### Sample quiz 1 — `structural-1` (5 questions)
 

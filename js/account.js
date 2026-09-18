@@ -4,16 +4,26 @@
  * localStorage (30-day sessions). All dynamic content via textContent (el()).
  * ==========================================================================*/
 
-import { el, $, CONFIG, isConfigured, apiPost, getStoredRef, renderNotConfigured } from "./ui.js";
+import { el, $, CONFIG, isConfigured, apiPost, getStoredRef, renderNotConfigured, qparam } from "./ui.js";
 
 const TOKEN_KEY = "archprep_student_token";
 const EXP_KEY = "archprep_student_expires";
+const NAME_KEY = "archprep_student_name";
+const EMAIL_KEY = "archprep_student_email";
 const root = () => $("#account-root");
 
 function getToken() { return localStorage.getItem(TOKEN_KEY) || ""; }
 function setSession(token, expires) { localStorage.setItem(TOKEN_KEY, token); localStorage.setItem(EXP_KEY, String(expires)); }
-function clearSession() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(EXP_KEY); }
+function clearSession() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(EXP_KEY); localStorage.removeItem(NAME_KEY); localStorage.removeItem(EMAIL_KEY); }
 function tokenValid() { return getToken() && Number(localStorage.getItem(EXP_KEY) || 0) > Date.now(); }
+
+/* Cache the student's display identity so the shared nav can show a chip. */
+function storeIdentity(profile) {
+  if (!profile) return;
+  const name = (profile.display_name || "").trim() || ((profile.email || "").split("@")[0] || "").trim();
+  if (name) localStorage.setItem(NAME_KEY, name);
+  if (profile.email) localStorage.setItem(EMAIL_KEY, profile.email);
+}
 
 /* ---- transport (student token in body; never a query string) ---- */
 async function sPost(action, payload = {}) {
@@ -34,9 +44,26 @@ function toast(msg, kind = "ok") {
 /* ---- boot ---- */
 document.addEventListener("DOMContentLoaded", () => {
   if (!isConfigured()) { renderNotConfigured(root()); return; }
+  const claim = (qparam("claim") || "").trim();
   if (tokenValid()) loadDashboard();
-  else renderLogin();
+  else renderLogin(claim ? "Sign in (or create your account) to claim your free item — no password needed." : undefined);
 });
+
+/* If ?claim=<product_id> is present, claim the free product once logged in,
+ * then refresh the library so it appears immediately. */
+async function maybeClaimFree() {
+  const pid = (qparam("claim") || "").trim();
+  if (!pid) return;
+  const res = await sPost("claimFree", { productId: pid });
+  // Clear the param so a refresh doesn't re-run it.
+  try { history.replaceState(null, "", location.pathname); } catch (e) {}
+  if (res && res.ok) {
+    toast(res.already ? "This free item is already in your library." : "Added to your library! Scroll to My library to start.");
+    loadLibrary();
+  } else if (res && res.error && res.error !== "session_expired") {
+    toast(res.error, "err");
+  }
+}
 
 /* ============================================================================
  * Login / signup (one flow)
@@ -129,7 +156,9 @@ async function loadDashboard(profile) {
     if (!res || !res.ok) return; // sPost handles session_expired
     profile = res.profile;
   }
+  storeIdentity(profile);
   renderDashboard(profile);
+  maybeClaimFree();
 }
 
 function renderDashboard(p) {
@@ -206,7 +235,7 @@ function renderDashboard(p) {
     saveBtn.disabled = true; saveBtn.textContent = "Saving…";
     const res = await sPost("updateStudentProfile", { display_name: nameInput.value.trim(), gcash_number: gcInput.value.trim() });
     saveBtn.disabled = false; saveBtn.textContent = "Save profile";
-    if (res && res.ok) toast("Profile saved.");
+    if (res && res.ok) { storeIdentity(res.profile); toast("Profile saved."); }
     else toast((res && res.error) || "Couldn't save.", "err");
   });
   prof.appendChild(form);

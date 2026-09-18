@@ -83,6 +83,7 @@ function handleRequest(e, method) {
       case 'getMyLibrary':
       case 'getMyQuiz':
       case 'gradeMyQuiz':
+      case 'claimFree':
         return jsonOut(dispatchStudent_(action, body));
 
       /* ---- Admin auth (adminLogin is the only admin action without a token) ---- */
@@ -1310,6 +1311,59 @@ function runOnce() {
   PropertiesService.getScriptProperties().deleteProperty('lock:admin');
 }
 
+/**
+ * Editor-run helper (no trailing underscore so it shows in the Run dropdown).
+ * Seeds a FREE demo product + a 3-question quiz so you can test the code-free,
+ * login-only library flow without any payment. Idempotent — safe to re-run.
+ *
+ * After running: a product "quiz-free" (₱0, active) and quiz "free-1" exist.
+ * On the site, a logged-in student can claim it from account.html?claim=quiz-free
+ * (or via the "Get it free" button on the catalogue) and play it 2x.
+ */
+function seedFreeDemo() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1) Free product (unlock_scope 'free' -> matches quiz ids starting with 'free-')
+  ensureColumns_(TAB_PRODUCTS, ['unlock_scope', 'drive_note']);
+  if (!findRow_(TAB_PRODUCTS, 'product_id', 'quiz-free')) {
+    appendRowObject_(TAB_PRODUCTS, {
+      product_id: 'quiz-free', type: 'quiz', subject: 'Demo',
+      title: 'Free Demo Quiz', description: 'A short free quiz to try the login-based library. No code needed.',
+      price_php: 0, hitpay_link: '', active: 'TRUE', sort_order: 1,
+      unlock_scope: 'free', drive_note: ''
+    });
+  }
+
+  // 2) Free quiz "free-1" with 3 questions (only if not already present)
+  var exists = false;
+  var qt = readTable_(TAB_QUIZZES, ['quiz_id']);
+  for (var i = 0; i < qt.rows.length; i++) {
+    if (String(qt.rows[i].quiz_id).trim().toLowerCase() === 'free-1') { exists = true; break; }
+  }
+  if (!exists) {
+    var meta = { quiz_title: 'Free Demo Quiz', subject: 'Demo', timer_minutes: 0 };
+    var demo = [
+      { question_text: 'Which material is best known for high compressive strength but low tensile strength?',
+        options: ['Steel', 'Concrete', 'Timber', 'Aluminium'], correct_index: 1,
+        explanation: 'Concrete resists compression well but is weak in tension, which is why it is reinforced with steel.' },
+      { question_text: 'In the Philippines, which code governs the structural design of buildings?',
+        options: ['NSCP', 'PEC', 'ASHRAE', 'NBCP'], correct_index: 0,
+        explanation: 'The National Structural Code of the Philippines (NSCP) governs structural design.' },
+      { question_text: 'What does a load-bearing wall primarily do?',
+        options: ['Divide rooms only', 'Carry loads to the foundation', 'Hold windows', 'Improve acoustics'], correct_index: 1,
+        explanation: 'A load-bearing wall transfers loads from above down to the foundation.' }
+    ];
+    for (var n = 0; n < demo.length; n++) {
+      appendRowObject_(TAB_QUIZZES, questionRowObject_('free-1', {
+        quiz_title: meta.quiz_title, subject: meta.subject, timer_minutes: meta.timer_minutes,
+        question_text: demo[n].question_text, options: demo[n].options,
+        correct_index: demo[n].correct_index, explanation: demo[n].explanation
+      }, n + 1, meta));
+    }
+  }
+  return 'seedFreeDemo complete: product quiz-free + quiz free-1 (3 questions).';
+}
+
 /* ===========================================================================
  * Purchase / access-request flow (email captured at checkout)
  * ---------------------------------------------------------------------------
@@ -1703,6 +1757,7 @@ function dispatchStudent_(action, body) {
     case 'getMyPurchases':       return getMyLibrary_(email);
     case 'getMyQuiz':            return getMyQuiz_(email, body);
     case 'gradeMyQuiz':          return gradeMyQuiz_(email, body);
+    case 'claimFree':            return claimFree_(email, body);
     default: return { ok: false, error: 'Unknown student action.' };
   }
 }
@@ -1816,6 +1871,42 @@ function getMyLibrary_(email) {
     }
   }
   return { ok: true, library: { quizzes: quizzesOut, materials: materials } };
+}
+
+/**
+ * Claim a FREE product (price_php === 0) into the logged-in student's library.
+ * Idempotent per (product, email) via a synthetic order_ref: 'free:<pid>:<email>'.
+ * Used by the "Get it free" flow so students can try code-free access with no payment.
+ */
+function claimFree_(email, body) {
+  var e = String(email || '').trim().toLowerCase();
+  var pid = String(body && (body.productId || body.product_id) || '').trim();
+  if (!e) return { ok: false, error: 'session_expired' };
+  if (!pid) return { ok: false, error: 'No product specified.' };
+
+  var found = findRow_(TAB_PRODUCTS, 'product_id', pid);
+  if (!found || !truthy_(found.row.active)) return { ok: false, error: 'That product isn\'t available right now.' };
+  if (toNum_(found.row.price_php, -1) !== 0) return { ok: false, error: 'This product is not free.' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(TAB_ENTITLEMENTS)) ss.insertSheet(TAB_ENTITLEMENTS).appendRow(ENTITLEMENT_COLS);
+
+  var orderRef = 'free:' + pid + ':' + e;
+  // idempotent: if already claimed, just succeed
+  var t = readTable_(TAB_ENTITLEMENTS, ['order_ref']);
+  for (var i = 0; i < t.rows.length; i++) {
+    if (String(t.rows[i].order_ref).trim() === orderRef) return { ok: true, already: true };
+  }
+
+  var type = String(found.row.type || '').trim().toLowerCase();
+  var scope = String(found.row.unlock_scope || '').trim();
+  appendRowObject_(TAB_ENTITLEMENTS, {
+    entitlement_id: 'ENT-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 900 + 100),
+    email: e, product_id: pid, type: type, title: found.row.title || pid,
+    scope: scope, attempts_allowed: (type === 'quiz' ? 2 : ''), granted_at: new Date().toISOString(),
+    order_ref: orderRef, status: 'active'
+  });
+  return { ok: true };
 }
 
 function getMyQuiz_(email, body) {

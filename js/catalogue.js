@@ -143,6 +143,15 @@ function quizCard(p, quizList) {
 /* ---------------- Shared ---------------- */
 
 function buyButton(p) {
+  // Free products (price 0) skip payment entirely — students claim them into
+  // their account library after logging in (code-free access).
+  if (Number(p.price_php) === 0) {
+    return el("a", {
+      class: "btn btn--primary btn--block",
+      text: "Get it free",
+      attrs: { href: "account.html?claim=" + encodeURIComponent(p.product_id) },
+    });
+  }
   const link = (p.hitpay_link || "").trim();
   const valid = /^https?:\/\//i.test(link) && !/REPLACE_ME/i.test(link);
   if (!valid) {

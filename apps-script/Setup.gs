@@ -64,6 +64,7 @@ function PRODUCTS_SEED_() {
     ['mat-history','material','History & Theory','History & Theory of Architecture — Review Notes','Key movements, Filipino architecture, and theory, summarised for fast revision.',199,'REPLACE_ME_HITPAY_LINK','TRUE',20,'','Drive: History & Theory folder'],
     ['mat-proflaws','material','Professional Practice','Professional Practice & Laws — Review Notes','RA 9266, the Architecture Act, codes of ethics, and standard contracts, made simple.',199,'REPLACE_ME_HITPAY_LINK','TRUE',30,'','Drive: Professional Practice folder'],
     ['mat-bundle','material','All Subjects','All-Subjects Review Bundle','Every subject\'s review notes in one money-saving bundle. Best value for full prep.',499,'REPLACE_ME_HITPAY_LINK','TRUE',40,'','Drive: All-Subjects bundle folder'],
+    ['quiz-free','quiz','Demo','Free Demo Quiz','A short free quiz to try the login-based library. No code needed — just log in and claim it.',0,'','TRUE',1,'free',''],
     ['quiz-structural','quiz','Structural Design','Structural Design — Quiz Pack','3 practice quizzes with worked explanations for Structural Design.',149,'REPLACE_ME_HITPAY_LINK','TRUE',50,'structural',''],
     ['quiz-mock','quiz','All Subjects','Mock Test Series','3 timed, mixed-subject mock exams that simulate the real ALE.',299,'REPLACE_ME_HITPAY_LINK','TRUE',60,'mock','']
   ];
@@ -72,6 +73,9 @@ function PRODUCTS_SEED_() {
 function QUIZZES_SEED_() {
   return [
     ['quiz_id','quiz_title','subject','question_number','question_text','option_a','option_b','option_c','option_d','correct_option','explanation','timer_minutes'],
+    ['free-1','Free Demo Quiz','Demo',1,'Which material is best known for high compressive strength but low tensile strength?','Steel','Concrete','Timber','Aluminium','B','Concrete resists compression well but is weak in tension, which is why it is reinforced with steel.',0],
+    ['free-1','Free Demo Quiz','Demo',2,'In the Philippines, which code governs the structural design of buildings?','NSCP','PEC','ASHRAE','NBCP','A','The National Structural Code of the Philippines (NSCP) governs structural design.',0],
+    ['free-1','Free Demo Quiz','Demo',3,'What does a load-bearing wall primarily do?','Divide rooms only','Carry loads to the foundation','Hold windows','Improve acoustics','B','A load-bearing wall transfers loads from above down to the foundation.',0],
     ['structural-1','Structural Design — Quiz 1','Structural Design',1,'Which load is a permanent, static load due to the self-weight of structural and non-structural elements?','Live load','Dead load','Wind load','Seismic load','B','Dead loads are permanent/static and include the self-weight of the structure and fixed components.',0],
     ['structural-1','Structural Design — Quiz 1','Structural Design',2,'In reinforced concrete, what is the main purpose of steel reinforcement?','To resist compression only','To resist tension','To reduce the concrete\'s weight','To improve fire rating','B','Concrete is strong in compression but weak in tension; steel reinforcement carries the tensile stresses.',0],
     ['structural-1','Structural Design — Quiz 1','Structural Design',3,'A simply supported beam carries a central point load. Where is the maximum bending moment?','At the supports','At the quarter span','At mid-span','Uniformly along the beam','C','For a central point load on a simply supported beam, the bending moment is maximum at mid-span.',0],

@@ -152,6 +152,17 @@ ul { margin: 0 0 1rem; padding-left: 1.2rem; }
 .nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--accent); }
 .nav-actions { display: flex; align-items: center; gap: 0.5rem; }
 
+/* Logged-in account chip in the nav (name + circular initial avatar). */
+.nav-account-chip { display: inline-flex; align-items: center; gap: .5rem; text-decoration: none; }
+.nav-account-chip .nav-account-name { color: var(--ink); font-weight: 700; font-size: var(--fs-sm); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-account-chip:hover .nav-account-name { color: var(--accent); }
+.nav-account-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent); color: #fff; font-weight: 800; font-size: .85rem;
+  flex: 0 0 auto; line-height: 1;
+}
+
 .nav-toggle {
   display: inline-flex; align-items: center; justify-content: center;
   width: var(--tap); height: var(--tap); background: transparent;

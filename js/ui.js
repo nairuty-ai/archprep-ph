@@ -239,18 +239,58 @@ export function getStoredRef() {
   return "";
 }
 
+/* ---------------------------------------------------------------------------
+ * Student session awareness (read-only helpers for the shared page chrome).
+ * The real auth lives in account.js; here we only reflect logged-in state.
+ * ------------------------------------------------------------------------- */
+const STUDENT_TOKEN_KEY = "archprep_student_token";
+const STUDENT_EXP_KEY = "archprep_student_expires";
+const STUDENT_NAME_KEY = "archprep_student_name";
+
+/** { loggedIn, name } — name is the display name or email local-part. */
+export function getStudentSession() {
+  try {
+    const token = localStorage.getItem(STUDENT_TOKEN_KEY) || "";
+    const exp = Number(localStorage.getItem(STUDENT_EXP_KEY) || 0);
+    if (token && exp > Date.now()) {
+      return { loggedIn: true, name: (localStorage.getItem(STUDENT_NAME_KEY) || "").trim() };
+    }
+  } catch (e) {}
+  return { loggedIn: false, name: "" };
+}
+
+function initialOf(name) {
+  const s = String(name || "").trim();
+  return s ? s.charAt(0).toUpperCase() : "•";
+}
+
+function accountNode(kind /* "nav" | "mobile" */) {
+  const sess = getStudentSession();
+  if (kind === "mobile") {
+    const li = el("li");
+    li.appendChild(el("a", { text: sess.loggedIn ? "My account" : "Account", attrs: { href: "account.html", "data-account-link": "1" } }));
+    return li;
+  }
+  const li = el("li");
+  if (sess.loggedIn) {
+    const chip = el("a", { class: "nav-account-chip", attrs: { href: "account.html", "data-account-link": "1", title: "Go to your account" } });
+    chip.appendChild(el("span", { class: "nav-account-avatar", text: initialOf(sess.name), attrs: { "aria-hidden": "true" } }));
+    chip.appendChild(el("span", { class: "nav-account-name", text: sess.name || "My account" }));
+    li.appendChild(chip);
+  } else {
+    li.appendChild(el("a", { text: "Account", attrs: { href: "account.html", "data-account-link": "1" } }));
+  }
+  return li;
+}
+
 function injectAccountLink() {
   $$(".nav-links").forEach((ul) => {
     if (ul.querySelector("[data-account-link]")) return;
-    const li = el("li");
-    li.appendChild(el("a", { text: "Account", attrs: { href: "account.html", "data-account-link": "1" } }));
-    ul.appendChild(li);
+    ul.appendChild(accountNode("nav"));
   });
   const mm = document.querySelector("#mobile-menu ul");
   if (mm && !mm.querySelector("[data-account-link]")) {
-    const li = el("li");
-    li.appendChild(el("a", { text: "Account", attrs: { href: "account.html", "data-account-link": "1" } }));
-    mm.appendChild(li);
+    mm.appendChild(accountNode("mobile"));
   }
 }
 
