@@ -61,6 +61,8 @@ function handleRequest(e, method) {
       case 'getSettings':  return jsonOut(cachedJson_('pub:getSettings', getSettings_));
       case 'getProducts':  return jsonOut(cachedJson_('pub:getProducts', getProducts_));
       case 'getQuizList':  return jsonOut(cachedJson_('pub:getQuizList', getQuizList_));
+      // One round-trip for the whole public catalogue (settings+products+quizzes).
+      case 'getBootstrap': return jsonOut(cachedJson_('pub:getBootstrap', getBootstrap_));
       case 'getQuiz':      return jsonOut(getQuiz_(params.quizId, params.code));
       case 'validateCode': return jsonOut(validateCodeEndpoint_(params.code, params.scope));
       case 'gradeQuiz':    return jsonOut(gradeQuiz_(body));
@@ -145,8 +147,8 @@ function jsonOut(obj) {
  * immediately (no stale data after an edit).
  * ======================================================================== */
 
-var PUBLIC_CACHE_TTL = 30; // seconds
-var PUBLIC_CACHE_KEYS = ['pub:getProducts', 'pub:getQuizList', 'pub:getSettings'];
+var PUBLIC_CACHE_TTL = 300; // seconds (5 min). Admin writes clear this immediately.
+var PUBLIC_CACHE_KEYS = ['pub:getProducts', 'pub:getQuizList', 'pub:getSettings', 'pub:getBootstrap'];
 
 function cachedJson_(key, producer) {
   var cache;
@@ -247,6 +249,19 @@ function getSettings_() {
 /* ===========================================================================
  * Endpoint: getProducts (active only; no secret fields)
  * ======================================================================== */
+
+/**
+ * Combined public read: settings + products + quiz list in ONE response,
+ * so a page pays the Apps-Script round-trip cost once instead of three times.
+ * Cached as a unit; admin writes clear it via clearPublicCache_().
+ */
+function getBootstrap_() {
+  return {
+    settings: getSettings_(),
+    products: getProducts_(),
+    quizList: getQuizList_()
+  };
+}
 
 function getProducts_() {
   var t = readTable_(TAB_PRODUCTS, [

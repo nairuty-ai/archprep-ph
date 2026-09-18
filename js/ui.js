@@ -185,6 +185,62 @@ export function renderNotConfigured(container) {
 
 let _settingsCache = null;
 
+/* ---------------------------------------------------------------------------
+ * Bootstrap: one API call for settings + products + quiz list, with a
+ * persistent stale-while-revalidate cache. This is the single biggest latency
+ * win — a page reads everything it needs from ONE Apps Script round-trip, and
+ * repeat visits render instantly from localStorage while refreshing in the
+ * background. Admin edits clear the SERVER cache, so staleness is bounded.
+ * ------------------------------------------------------------------------- */
+const BOOT_KEY = "archprep_bootstrap";
+const BOOT_TTL = 5 * 60 * 1000; // 5 min "fresh" window before a background refresh
+let _bootMem = null;      // in-memory copy for the current page (0 refetch across modules)
+let _bootPromise = null;  // in-flight fetch, so parallel callers share one request
+
+function readBootCache() {
+  try { return JSON.parse(localStorage.getItem(BOOT_KEY)); } catch (e) { return null; }
+}
+function writeBootCache(v) {
+  try { localStorage.setItem(BOOT_KEY, JSON.stringify({ t: Date.now(), v })); } catch (e) {}
+}
+function fetchBootstrap() {
+  return apiGet("getBootstrap").then((data) => {
+    if (data && data.settings) { _bootMem = data; writeBootCache(data); }
+    return data;
+  });
+}
+
+/** Returns { settings, products, quizList } — instantly from cache when
+ *  available (revalidating in the background), else awaits the network. */
+export async function getBootstrap() {
+  if (!isConfigured()) return null;
+  if (_bootMem) return _bootMem;
+
+  const cached = readBootCache();
+  if (cached && cached.v) {
+    _bootMem = cached.v;
+    if (Date.now() - cached.t > BOOT_TTL && !_bootPromise) {
+      _bootPromise = fetchBootstrap().catch(() => null).finally(() => { _bootPromise = null; });
+    }
+    return _bootMem; // stale-while-revalidate: return immediately
+  }
+
+  if (!_bootPromise) _bootPromise = fetchBootstrap().catch(() => null).finally(() => { _bootPromise = null; });
+  return _bootPromise;
+}
+
+/** Public catalogue helpers backed by the bootstrap cache (with fallbacks). */
+export async function getProductsCached() {
+  const boot = await getBootstrap();
+  if (boot && Array.isArray(boot.products)) return boot.products;
+  return apiGet("getProducts");
+}
+export async function getQuizListCached() {
+  const boot = await getBootstrap();
+  if (boot && Array.isArray(boot.quizList)) return boot.quizList;
+  return apiGet("getQuizList").catch(() => []);
+}
+
 export async function getSettings() {
   if (_settingsCache) return _settingsCache;
   const fallback = {
@@ -196,7 +252,8 @@ export async function getSettings() {
   };
   if (!isConfigured()) { _settingsCache = fallback; return fallback; }
   try {
-    const data = await apiGet("getSettings");
+    const boot = await getBootstrap();
+    const data = (boot && boot.settings) ? boot.settings : await apiGet("getSettings");
     _settingsCache = { ...fallback, ...cleanSettings(data) };
   } catch (e) {
     _settingsCache = fallback;

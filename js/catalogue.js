@@ -4,7 +4,8 @@
  * ==========================================================================*/
 
 import {
-  el, peso, apiGet, apiPost, isConfigured, getStoredRef,
+  el, peso, apiPost, isConfigured, getStoredRef,
+  getProductsCached, getQuizListCached,
   renderLoading, renderError, renderEmpty, renderNotConfigured,
 } from "./ui.js";
 
@@ -16,7 +17,7 @@ export async function initMaterials(container) {
   const load = async () => {
     renderLoading(container, "Loading study materials…");
     try {
-      const products = await apiGet("getProducts");
+      const products = await getProductsCached();
       const materials = (Array.isArray(products) ? products : []).filter((p) => p.type === "material");
       if (materials.length === 0) {
         return renderEmpty(container, "Materials coming soon",
@@ -84,8 +85,8 @@ export async function initQuizzes(container) {
     renderLoading(container, "Loading quiz packs…");
     try {
       const [products, quizList] = await Promise.all([
-        apiGet("getProducts"),
-        apiGet("getQuizList").catch(() => []),
+        getProductsCached(),
+        getQuizListCached(),
       ]);
       const quizProducts = (Array.isArray(products) ? products : []).filter((p) => p.type === "quiz");
 

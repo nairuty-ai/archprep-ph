@@ -137,6 +137,10 @@ check("public getQuiz has NO correct_option", !JSON.stringify(pq).includes("corr
 check("public getQuiz has NO explanation text", !JSON.stringify(pq).includes("permanent."));
 check("getProducts excludes inactive quiz-mock", !get({ action: "getProducts" }).some((p) => p.product_id === "quiz-mock"));
 check("getProducts includes active ones (3: mat-structural, quiz-structural, quiz-free)", get({ action: "getProducts" }).length === 3);
+const boot = get({ action: "getBootstrap" });
+check("getBootstrap returns settings+products+quizList in one call",
+  boot && boot.settings && Array.isArray(boot.products) && Array.isArray(boot.quizList) && boot.products.length === 3);
+check("getBootstrap leaks NO answer key", !JSON.stringify(boot).includes("correct_option") && !JSON.stringify(boot).includes("permanent."));
 const grade = post("gradeQuiz", { quizId: "structural-1", code: "ARCH-7F3K", answers: { "1": "B", "2": "A" } });
 check("gradeQuiz still works (1/2)", grade.ok && grade.score === 1 && grade.total === 2);
 
