@@ -166,10 +166,19 @@ export async function initNav() {
     menu.appendChild(dropdown);
     navActions.appendChild(menu);
   } else {
-    // Login button (Requirement 31.2).
-    navActions.appendChild(
-      el('a', { class: 'btn btn--primary', text: 'Log in', attrs: { href: '/login.html' } }),
-    );
+    // Login + Sign up buttons when logged out.
+    const loginBtn = el('a', {
+      class: 'btn btn--outline',
+      text: 'Log in',
+      attrs: { href: '/login.html' },
+    });
+    const signupBtn = el('a', {
+      class: 'btn btn--primary',
+      text: 'Sign up free',
+      attrs: { href: '/login.html' },
+    });
+    navActions.appendChild(loginBtn);
+    navActions.appendChild(signupBtn);
   }
 }
 

@@ -3,15 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Take a Quiz — ArchPrep PH</title>
-  <meta name="description" content="Enter your access code to take your purchased ALE practice quiz. Answers are graded securely and you'll see full explanations." />
-  <meta name="robots" content="noindex" />
-
+  <title>Quiz — ArchPrep PH</title>
+  <meta name="description" content="Take your ArchPrep PH practice quiz. Questions, answer choices, and instant explanations after submission." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <!-- Speed up the first API call: open connections to the Apps Script backend early. -->
-  <link rel="preconnect" href="https://script.google.com" crossorigin />
-  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/styles.css" />
@@ -19,80 +14,80 @@
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <div id="announce" class="announce" hidden></div>
 
   <header class="site-header">
-    <div class="container nav">
+    <div class="container nav-inner">
       <a class="brand" href="index.html">
         <span class="brand-mark" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
         </span>
-        <span data-brand>ArchPrep PH</span>
+        <span>ArchPrep PH</span>
       </a>
       <nav aria-label="Primary">
         <ul class="nav-links">
           <li><a href="index.html">Home</a></li>
-          <li><a href="materials.html">Materials</a></li>
-          <li><a href="quizzes.html">Quizzes</a></li>
+          <li><a href="catalog.html">Catalog</a></li>
           <li><a href="faq.html">FAQ</a></li>
         </ul>
       </nav>
-      <div class="nav-actions">
-        <a class="btn btn--outline" href="quizzes.html">All quizzes</a>
-        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-        </button>
-      </div>
+      <div id="nav-actions"></div>
+      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
     </div>
-    <div class="mobile-menu" id="mobile-menu">
+    <nav class="mobile-menu" id="mobile-menu" hidden aria-label="Mobile navigation">
       <ul>
         <li><a href="index.html">Home</a></li>
-        <li><a href="materials.html">Materials</a></li>
-        <li><a href="quizzes.html">Quizzes</a></li>
+        <li><a href="catalog.html">Catalog</a></li>
         <li><a href="faq.html">FAQ</a></li>
       </ul>
-    </div>
+    </nav>
   </header>
 
   <main id="main">
-    <section class="section">
-      <div class="container">
-        <div id="quiz-root">
-          <!-- quiz.js renders the full flow here: code entry → questions → results -->
-          <div class="state"><div class="spinner" aria-hidden="true"></div><p class="mb-0">Loading…</p></div>
-        </div>
-      </div>
-    </section>
+    <div id="quiz-root" class="container quiz-shell" style="padding-top:2rem;padding-bottom:3rem;"></div>
   </main>
 
   <footer class="site-footer">
     <div class="container footer-grid">
       <div>
-        <p class="brand" style="color:#fff"><span data-brand>ArchPrep PH</span></p>
-        <p>Affordable review materials and practice quizzes for the Philippine Architect Licensure Examination.</p>
+        <p style="color:#fff;font-family:var(--font-head);font-size:1.125rem;font-weight:600;margin:0 0 .5rem">ArchPrep PH</p>
+        <p style="color:rgba(255,255,255,.7);font-size:.875rem">Affordable ALE review materials and practice quizzes. Instant access after payment.</p>
       </div>
       <div>
         <h4>Explore</h4>
         <ul>
-          <li><a href="materials.html">Materials</a></li>
-          <li><a href="quizzes.html">Quizzes</a></li>
+          <li><a href="catalog.html">Catalog</a></li>
           <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Account</h4>
+        <ul>
+          <li><a href="login.html">Sign in</a></li>
+          <li><a href="my-learning.html">My Learning</a></li>
+          <li><a href="earnings.html">Earnings</a></li>
         </ul>
       </div>
       <div>
         <h4>Contact</h4>
         <ul>
-          <li><a data-contact-email href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
+          <li><a href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
         </ul>
       </div>
     </div>
     <div class="container footer-note">
-      <p class="mb-0">© <span id="footer-year">2026</span> <span data-brand>ArchPrep PH</span>. Your answers are graded securely; correct answers are never sent to your device until you submit.</p>
-      <p class="mb-0" style="margin-top:.5rem"><a href="admin.html" style="color:#8A8678">Admin</a></p>
+      <p class="mb-0">© <span id="footer-year"></span> ArchPrep PH. Payments handled securely by HitPay (GCash / QR Ph).</p>
+      <p class="mb-0" style="margin-top:.5rem"><a href="admin.html" style="color:rgba(255,255,255,.4);font-size:.8rem">Admin</a></p>
     </div>
   </footer>
 
-  <script type="module" src="js/config-loader.js"></script>
-  <script type="module" src="js/quiz.js"></script>
+  <script>document.getElementById('footer-year').textContent = new Date().getFullYear();</script>
+  <script type="module">
+    import { initNav }     from './js/auth.js';
+    import { initQuiz }    from './js/quiz-runner.js';
+    initNav();
+    initQuiz(document.getElementById('quiz-root'));
+  </script>
 </body>
 </html>

@@ -78,6 +78,24 @@ function clientCacheSet(action, value) {
   catch (e) {}
 }
 
+/** Hard request timeout so a slow/hanging backend can never leave a spinner
+ *  on screen forever. Aborts the fetch and throws a friendly ApiError. */
+const REQUEST_TIMEOUT_MS = 12000;
+async function fetchWithTimeout(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (e) {
+    if (e && e.name === "AbortError") {
+      throw new ApiError("timeout", "The server is taking too long to respond. Please try again.");
+    }
+    throw new ApiError("network", "We couldn't reach the server. Please check your connection and try again.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function apiGet(action, params = {}) {
   if (!isConfigured()) throw new ApiNotConfigured();
 
@@ -88,12 +106,7 @@ export async function apiGet(action, params = {}) {
   }
 
   const url = buildUrl({ action, ...params });
-  let res;
-  try {
-    res = await fetch(url, { method: "GET", redirect: "follow" });
-  } catch (e) {
-    throw new ApiError("network", "We couldn't reach the server. Please check your connection and try again.");
-  }
+  const res = await fetchWithTimeout(url, { method: "GET", redirect: "follow" });
   const data = await parseJsonResponse(res);
   if (cacheable) clientCacheSet(action, data);
   return data;
@@ -103,18 +116,13 @@ export async function apiGet(action, params = {}) {
 export async function apiPost(action, payload = {}) {
   if (!isConfigured()) throw new ApiNotConfigured();
   const url = buildUrl({ action });
-  let res;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      redirect: "follow",
-      // text/plain => "simple request" => no CORS preflight (Section 8 CORS note)
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action, ...payload }),
-    });
-  } catch (e) {
-    throw new ApiError("network", "We couldn't reach the server. Please check your connection and try again.");
-  }
+  const res = await fetchWithTimeout(url, {
+    method: "POST",
+    redirect: "follow",
+    // text/plain => "simple request" => no CORS preflight (Section 8 CORS note)
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action, ...payload }),
+  });
   return parseJsonResponse(res);
 }
 

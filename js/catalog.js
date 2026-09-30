@@ -1,18 +1,19 @@
 /* js/catalog.js — published product catalog renderer.
  *
- * Used by catalog.html and index.html (featured subset).
+ * Used by catalog.html (full catalog) and index.html (featured subsets).
  *
  * Exports:
- *   initCatalog(container)              — renders the full catalog
- *   initFeaturedCatalog(container, limit=4) — renders the first `limit` products
+ *   initCatalog(container)                   — renders all products
+ *   initFeaturedCatalog(container, limit, type) — renders first N of a given type
+ *   thumbnailUrl(path)                        — helper to build thumbnail src
  */
 
-import { api } from './api.js';
-import { el, peso } from './dom.js';
+import { api }                               from './api.js';
+import { el, peso }                          from './dom.js';
 import { renderLoading, renderEmpty, renderError } from './states.js';
 
 // ---------------------------------------------------------------------------
-// Thumbnail helpers
+// Thumbnail helper
 // ---------------------------------------------------------------------------
 
 /**
@@ -23,101 +24,126 @@ import { renderLoading, renderEmpty, renderError } from './states.js';
  * @param {string|null|undefined} thumbnailPath
  * @returns {string|null}
  */
-function thumbnailUrl(thumbnailPath) {
+export function thumbnailUrl(thumbnailPath) {
   if (!thumbnailPath) return null;
   if (thumbnailPath.startsWith('http')) return thumbnailPath;
   const base = window.APP_CONFIG?.SUPABASE_URL?.replace(/\/+$/, '');
   return `${base}/storage/v1/object/public/thumbnails/${thumbnailPath}`;
 }
 
+// ---------------------------------------------------------------------------
+// Card builder
+// ---------------------------------------------------------------------------
+
 /**
  * Build a catalog card element for one product.
  *
  * @param {object} product
- * @returns {HTMLElement}
+ * @returns {HTMLElement} article.course-card wrapped in div.course-card-wrap
  */
 function buildCard(product) {
-  const url = thumbnailUrl(product.thumbnail_path);
+  const slug = product.slug || product.id;
+  const type = product.type || 'material';
+  const url  = thumbnailUrl(product.thumbnail_path);
 
-  // Thumbnail or placeholder
+  // --- Thumbnail or placeholder ---
   let thumbEl;
   if (url) {
     thumbEl = el('img', {
+      class: 'course-thumb',
       attrs: {
-        src: url,
-        alt: product.title + ' thumbnail',
+        src:     url,
+        alt:     (product.title || '') + ' thumbnail',
         loading: 'lazy',
       },
     });
-    thumbEl.style.cssText = 'width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--radius-sm) var(--radius-sm) 0 0;';
   } else {
-    thumbEl = el('div', { class: 'card-thumb-placeholder' });
     const initial = (product.title || '?').charAt(0).toUpperCase();
-    thumbEl.textContent = initial;
-    thumbEl.style.cssText = [
-      'width:100%;aspect-ratio:16/9;',
-      'border-radius:var(--radius-sm) var(--radius-sm) 0 0;',
-      'background:var(--secondary);color:#fff;',
-      'display:flex;align-items:center;justify-content:center;',
-      'font-family:var(--font-head);font-size:3rem;font-weight:600;',
-    ].join('');
+    thumbEl = el('div', { class: 'course-thumb-placeholder', text: initial });
   }
 
-  // Subject badge
-  const badge = el('span', { class: 'subject-tag', text: product.subject || 'General' });
+  // --- Subject badge ---
+  const badgeClass = type === 'quiz_pack'
+    ? 'course-badge course-badge--quiz'
+    : 'course-badge';
+  const badge = el('span', {
+    class: badgeClass,
+    text:  product.subject || 'General',
+  });
 
-  // Title
-  const title = el('h3', { text: product.title || '' });
+  // --- Title (2-line clamp via CSS) ---
+  const title = el('h3', {
+    class: 'course-title',
+    text:  product.title || '',
+  });
 
-  // Subtitle
-  const subtitle = el('p', { class: 'desc', text: product.subtitle || '' });
+  // --- Subtitle (1-line clamp via CSS) ---
+  const subtitle = el('p', {
+    class: 'course-subtitle',
+    text:  product.subtitle || '',
+  });
 
-  // Price
-  const priceEl = el('p', { class: 'price', text: peso(product.price_php) });
+  // --- Meta row ---
+  const priceSpan = el('span', {
+    class: 'course-price',
+    text:  peso(product.price_php),
+  });
+  const typeLabel = type === 'quiz_pack' ? 'Practice Quiz' : 'Material';
+  const typeSpan  = el('span', { text: typeLabel });
+  const meta = el('div', {
+    class:    'course-meta',
+    children: [priceSpan, typeSpan],
+  });
 
-  // Includes (first 3 items)
-  const includesList = Array.isArray(product.includes) ? product.includes.slice(0, 3) : [];
-  const includesSection = el('div', { class: 'included' });
-  if (includesList.length > 0) {
-    includesSection.appendChild(el('p', { text: 'Includes:' }));
-    const ul = el('ul', { class: 'check-list' });
-    for (const item of includesList) {
-      ul.appendChild(el('li', { text: String(item) }));
-    }
-    includesSection.appendChild(ul);
-  }
+  // --- Card body ---
+  const body = el('div', {
+    class:    'course-body',
+    children: [badge, title, subtitle, meta],
+  });
 
-  // CTA button
-  const slug = product.slug || product.id;
-  const ctaLink = el('a', {
+  // --- CTA ---
+  const cta = el('a', {
     class: 'btn btn--primary btn--block',
-    text: 'View — ' + product.title,
-    attrs: { href: '/product.html?slug=' + encodeURIComponent(slug) },
+    text:  'View Details',
+    attrs: {
+      href:       '/product.html?slug=' + encodeURIComponent(slug),
+      'aria-label': 'View details for ' + (product.title || slug),
+    },
   });
-  ctaLink.setAttribute('aria-label', 'View ' + product.title);
-
-  const cardFoot = el('div', { class: 'card-foot', children: [ctaLink] });
-
-  // Assemble card body (below thumbnail)
-  const cardBody = el('div', {
-    attrs: { style: 'padding:1rem;display:flex;flex-direction:column;gap:.4rem;flex:1;' },
-    children: [
-      badge,
-      title,
-      subtitle,
-      priceEl,
-      includesSection,
-      cardFoot,
-    ],
+  const foot = el('div', {
+    class:    'course-foot',
+    children: [cta],
   });
 
+  // --- Article ---
   const article = el('article', {
-    class: 'card',
-    attrs: { style: 'padding:0;overflow:hidden;' },
-    children: [thumbEl, cardBody],
+    class: 'course-card',
+    data:  { type, slug },
+    children: [thumbEl, body, foot],
   });
 
-  return article;
+  // --- Wrapper (used by filter tabs to show/hide) ---
+  const wrap = el('div', { class: 'course-card-wrap', children: [article] });
+  return wrap;
+}
+
+// ---------------------------------------------------------------------------
+// Grid renderer
+// ---------------------------------------------------------------------------
+
+/**
+ * Internal: render an array of products as a course-grid into container.
+ *
+ * @param {HTMLElement} container
+ * @param {object[]} products
+ */
+function _renderGrid(container, products) {
+  container.innerHTML = '';
+  const grid = el('div', { class: 'course-grid' });
+  for (const product of products) {
+    grid.appendChild(buildCard(product));
+  }
+  container.appendChild(grid);
 }
 
 // ---------------------------------------------------------------------------
@@ -144,38 +170,25 @@ export async function initCatalog(container) {
 }
 
 /**
- * Fetch and render the first `limit` products (by sort_order) into `container`.
- * Used on the home page as a "featured" section.
+ * Fetch and render the first `limit` products of a given `type` into `container`.
+ * Used on the home page as featured section previews.
  *
  * @param {HTMLElement} container
  * @param {number} [limit=4]
+ * @param {'material'|'quiz_pack'} [type]
  */
-export async function initFeaturedCatalog(container, limit = 4) {
+export async function initFeaturedCatalog(container, limit = 4, type) {
   renderLoading(container, 'Loading featured products…');
   try {
     const products = await api.getCatalog();
-    const featured = products.slice(0, limit);
+    const filtered = type ? products.filter(p => p.type === type) : products;
+    const featured = filtered.slice(0, limit);
     if (!featured.length) {
       renderEmpty(container, 'No featured products yet.');
       return;
     }
     _renderGrid(container, featured);
   } catch (err) {
-    renderError(container, err.message || 'Could not load products.', () => initFeaturedCatalog(container, limit));
+    renderError(container, err.message || 'Could not load products.', () => initFeaturedCatalog(container, limit, type));
   }
-}
-
-/**
- * Internal: render an array of products as a card grid into container.
- *
- * @param {HTMLElement} container
- * @param {object[]} products
- */
-function _renderGrid(container, products) {
-  container.innerHTML = '';
-  const grid = el('div', { class: 'grid grid--3' });
-  for (const product of products) {
-    grid.appendChild(buildCard(product));
-  }
-  container.appendChild(grid);
 }

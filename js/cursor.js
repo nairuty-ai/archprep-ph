@@ -13,16 +13,22 @@ export function initCursor() {
   const ring = document.createElement("div");
   dot.className = "cursor-dot";
   ring.className = "cursor-ring";
+  // Start hidden: only reveal once the user actually moves the pointer, so it
+  // never appears frozen at screen-center (e.g. on load, or in screenshots).
+  dot.style.opacity = "0";
+  ring.style.opacity = "0";
   document.body.appendChild(dot);
   document.body.appendChild(ring);
   document.documentElement.classList.add("has-custom-cursor");
 
   let mx = window.innerWidth / 2, my = window.innerHeight / 2;
   let rx = mx, ry = my;
+  let revealed = false;
 
   window.addEventListener("pointermove", (e) => {
     mx = e.clientX; my = e.clientY;
     dot.style.left = mx + "px"; dot.style.top = my + "px";
+    if (!revealed) { revealed = true; dot.style.opacity = "1"; ring.style.opacity = "1"; }
   }, { passive: true });
 
   // Spring-follow ring
@@ -45,5 +51,5 @@ export function initCursor() {
   window.addEventListener("pointerdown", () => ring.classList.add("down"));
   window.addEventListener("pointerup", () => ring.classList.remove("down"));
   document.addEventListener("pointerleave", () => { dot.style.opacity = "0"; ring.style.opacity = "0"; });
-  document.addEventListener("pointerenter", () => { dot.style.opacity = "1"; ring.style.opacity = "1"; });
+  document.addEventListener("pointerenter", () => { if (revealed) { dot.style.opacity = "1"; ring.style.opacity = "1"; } });
 }

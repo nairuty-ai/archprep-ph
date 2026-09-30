@@ -14,7 +14,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
 
   <link rel="icon"       href="assets/icons/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/styles.css" />
@@ -23,175 +23,213 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
+  <!-- =====================================================================
+       HEADER / NAV
+       ===================================================================== -->
   <header class="site-header">
-    <div class="container nav">
+    <div class="nav-inner">
       <a class="brand" href="index.html">
         <span class="brand-mark" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path d="M3 21 12 3l9 18"/>
+            <path d="M7.5 21 12 12l4.5 9"/>
+          </svg>
         </span>
         <span>ArchPrep PH</span>
       </a>
+
       <nav aria-label="Primary">
-        <ul class="nav-links">
+        <ul class="nav-links" role="list">
           <li><a href="index.html" aria-current="page">Home</a></li>
           <li><a href="catalog.html">Catalog</a></li>
           <li><a href="faq.html">FAQ</a></li>
         </ul>
       </nav>
+
       <div id="nav-actions"></div>
+
       <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
+        </svg>
       </button>
     </div>
+
     <nav class="mobile-menu" id="mobile-menu" hidden aria-label="Mobile navigation">
-      <ul>
+      <ul role="list">
         <li><a href="index.html">Home</a></li>
         <li><a href="catalog.html">Catalog</a></li>
         <li><a href="faq.html">FAQ</a></li>
       </ul>
+      <a class="btn btn--primary btn--block" href="login.html">Sign in free</a>
     </nav>
   </header>
 
   <main id="main">
 
-    <!-- Hero — static, mobile-first (Requirement 32.3) -->
+    <!-- ===================================================================
+         HERO
+         =================================================================== -->
     <section class="hero">
-      <div class="container hero-grid">
-        <div class="hero-content">
-          <p class="eyebrow">Architect Licensure Exam · Philippines</p>
-          <h1 id="hero-headline">Pass the ALE with confidence.</h1>
-          <p class="lead" id="hero-subhead">Focused review materials and exam-style practice quizzes for Filipino architecture graduates — affordable, mobile-friendly, and built for the PRC ALE.</p>
-          <div class="hero-cta">
-            <a class="btn btn--primary btn--lg" href="catalog.html">Browse the catalog</a>
-            <a class="btn btn--outline btn--lg"  href="login.html">Sign in free</a>
+      <div class="container">
+        <div class="hero-inner">
+          <div class="hero-content">
+            <p class="eyebrow">Architect Licensure Exam · Philippines</p>
+            <h1 id="hero-headline">Pass the ALE with confidence.</h1>
+            <p class="lead" id="hero-subhead">Focused review materials and practice quizzes for Filipino architecture graduates — affordable, mobile-friendly, instant access.</p>
+            <div class="hero-cta">
+              <a class="btn btn--white btn--lg" href="catalog.html">Browse catalog</a>
+              <a class="btn btn--outline btn--lg" href="login.html" style="border-color:rgba(255,255,255,.5);color:#fff">Sign in free</a>
+            </div>
+            <div class="hero-stats">
+              <div class="hero-stat">
+                <span class="hero-stat-num">GCash</span>
+                <span class="hero-stat-label">GCash Only</span>
+              </div>
+              <div class="hero-stat">
+                <span class="hero-stat-num">Instant</span>
+                <span class="hero-stat-label">Instant Access</span>
+              </div>
+              <div class="hero-stat">
+                <span class="hero-stat-num">No Expiry</span>
+                <span class="hero-stat-label">Yours Forever</span>
+              </div>
+            </div>
           </div>
-          <p class="hero-trust">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Secure payment via HitPay · GCash &amp; QR Ph · Instant in-account access
-          </p>
-        </div>
-        <div class="hero-media">
-          <img src="assets/images/hero-architecture.jpg" alt="Architecture student reviewing plans at a bright desk" width="800" height="600" loading="eager" />
+          <div class="hero-media-wrap">
+            <img
+              class="hero-media"
+              src="assets/images/hero-architecture.jpg"
+              alt="Architecture student reviewing plans at a bright desk"
+              width="800"
+              height="600"
+              loading="eager"
+            />
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- How it works — v2 copy (Requirement 34) -->
+    <!-- ===================================================================
+         HOW IT WORKS
+         =================================================================== -->
     <section class="section--tight">
       <div class="container">
         <p class="eyebrow center">How it works</p>
         <h2 class="center">Three steps to your review</h2>
         <div class="steps" style="margin-top:1.5rem">
           <div class="step">
-            <span class="step-num">1</span>
+            <span class="step-num" aria-hidden="true">1</span>
             <h3>Create a free account</h3>
-            <p class="mb-0">Enter your email and a 6-digit code. No password, no card — your account is ready in seconds. (Requirement 34.2)</p>
+            <p class="mb-0">Enter your email and a 6-digit code. No password, no card — your account is ready in seconds.</p>
           </div>
           <div class="step">
-            <span class="step-num">2</span>
+            <span class="step-num" aria-hidden="true">2</span>
             <h3>Pay with GCash or QR Ph</h3>
-            <p class="mb-0">Choose a material or quiz pack, tap Buy, and pay securely through HitPay. Card payment is not available — GCash and QR Ph only.</p>
+            <p class="mb-0">Choose a material or quiz pack, tap Buy, and pay securely through HitPay. GCash and QR Ph only — no card needed.</p>
           </div>
           <div class="step">
-            <span class="step-num">3</span>
+            <span class="step-num" aria-hidden="true">3</span>
             <h3>Access instantly in your account</h3>
-            <p class="mb-0">The moment your payment clears, your purchase unlocks in My Learning. Open it any time on any device — no emails, no codes.</p>
+            <p class="mb-0">The moment your payment clears, your purchase unlocks in My Learning. Open it any time on any device — no codes, no emails.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Value props -->
-    <section class="section--tight">
-      <div class="container">
-        <div class="grid grid--3">
-          <div class="card">
-            <h3>Built for the ALE</h3>
-            <p class="desc mb-0">Materials and questions organised by PRC subject areas, written in exam style so you practise the way you'll be tested.</p>
-          </div>
-          <div class="card">
-            <h3>Affordable, pay once</h3>
-            <p class="desc mb-0">Pay once per pack with GCash or QR Ph. No monthly fees, no subscription, no card required.</p>
-          </div>
-          <div class="card">
-            <h3>Study on your phone</h3>
-            <p class="desc mb-0">Everything works smoothly on mobile so you can review and take quizzes wherever you are.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Featured products (catalog preview) -->
+    <!-- ===================================================================
+         FEATURED MATERIALS
+         =================================================================== -->
     <section class="section--tight">
       <div class="container">
         <div class="section-header">
           <h2 class="mb-0">Review materials</h2>
-          <a class="btn btn--ghost" href="catalog.html">See all →</a>
+          <a class="btn btn--ghost" href="catalog.html">See all &rarr;</a>
         </div>
         <div id="materials-preview"></div>
       </div>
     </section>
 
+    <!-- ===================================================================
+         FEATURED QUIZZES
+         =================================================================== -->
     <section class="section--tight">
       <div class="container">
         <div class="section-header">
           <h2 class="mb-0">Practice quizzes</h2>
-          <a class="btn btn--ghost" href="catalog.html">See all →</a>
+          <a class="btn btn--ghost" href="catalog.html">See all &rarr;</a>
         </div>
         <div id="quizzes-preview"></div>
       </div>
     </section>
 
-    <!-- Testimonials -->
+    <!-- ===================================================================
+         TESTIMONIALS
+         =================================================================== -->
     <section class="section">
       <div class="container">
         <p class="eyebrow center">What reviewers say</p>
         <h2 class="center">Trusted by aspiring architects</h2>
         <div class="grid grid--3" style="margin-top:1.5rem">
-          <figure class="quote">
-            <blockquote>"The practice quizzes felt just like the real exam. The explanations helped me understand why I got things wrong."</blockquote>
-            <figcaption class="who">— Review user, Structural Design</figcaption>
-          </figure>
-          <figure class="quote">
-            <blockquote>"Affordable and straight to the point. I could review on my phone during my commute."</blockquote>
-            <figcaption class="who">— Review user, History &amp; Theory</figcaption>
-          </figure>
-          <figure class="quote">
-            <blockquote>"Paid with GCash and it was in my account immediately. Really convenient."</blockquote>
-            <figcaption class="who">— Review user, All-subjects bundle</figcaption>
-          </figure>
+          <div class="quote">
+            <p>"The practice quizzes felt just like the real exam. The explanations helped me understand why I got things wrong."</p>
+            <cite>Review user, Structural Design</cite>
+          </div>
+          <div class="quote">
+            <p>"Affordable and straight to the point. I could review on my phone during my commute."</p>
+            <cite>Review user, History &amp; Theory</cite>
+          </div>
+          <div class="quote">
+            <p>"Paid with GCash and it was in my account immediately. Really convenient."</p>
+            <cite>Review user, All-subjects bundle</cite>
+          </div>
         </div>
         <p class="muted center" style="margin-top:1rem;font-size:var(--fs-xs)">Sample testimonials shown for layout. Replace with real feedback once collected.</p>
       </div>
     </section>
 
-    <!-- Referral CTA -->
+    <!-- ===================================================================
+         REFERRAL CTA
+         =================================================================== -->
     <section class="section--tight">
       <div class="container">
         <div class="card center" style="border-color:var(--secondary);background:linear-gradient(135deg,#EAF0F2,#fff)">
           <p class="eyebrow" style="color:var(--secondary)">Refer &amp; earn</p>
-          <h2>Refer a friend, earn ₱9</h2>
-          <p class="lead">Sign in to get your personal referral link. Every friend who buys earns you a ₱9 reward — cash out via GCash when you reach ₱100.</p>
+          <h2>Refer a friend, earn &#x20B1;9</h2>
+          <p class="lead" style="margin-inline:auto">Sign in to get your personal referral link. Every friend who buys earns you a &#x20B1;9 reward — cash out via GCash when you reach &#x20B1;100.</p>
           <p class="mb-0"><a class="btn btn--secondary btn--lg" href="login.html">Get my referral link</a></p>
         </div>
       </div>
     </section>
 
-    <!-- FAQ teaser -->
+    <!-- ===================================================================
+         FAQ TEASER
+         =================================================================== -->
     <section class="section--tight">
       <div class="container center">
         <h2>Have a question?</h2>
-        <p class="lead">Learn how payments, account access, and quizzes work.</p>
+        <p class="lead" style="margin-inline:auto">Learn how payments, account access, and quizzes work.</p>
         <a class="btn btn--outline btn--lg" href="faq.html">Read the FAQ</a>
       </div>
     </section>
 
   </main>
 
+  <!-- =====================================================================
+       FOOTER
+       ===================================================================== -->
   <footer class="site-footer">
     <div class="container footer-grid">
-      <div>
-        <p class="brand" style="color:#fff">ArchPrep PH</p>
+      <div class="footer-brand">
+        <a class="brand" href="index.html" style="color:#fff;margin-bottom:.75rem">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <path d="M3 21 12 3l9 18"/>
+              <path d="M7.5 21 12 12l4.5 9"/>
+            </svg>
+          </span>
+          <span>ArchPrep PH</span>
+        </a>
         <p>Affordable review materials and practice quizzes for the Philippine Architect Licensure Examination. Access unlocks instantly in your account after payment.</p>
       </div>
       <div>
@@ -217,27 +255,25 @@
       </div>
     </div>
     <div class="container footer-note">
-      <p class="mb-0">© <span id="footer-year"></span> ArchPrep PH. Payments handled securely by HitPay (GCash / QR Ph).</p>
-      <p class="mb-0" style="margin-top:.5rem"><a href="admin.html" style="color:#8A8678;font-size:.8rem">Admin</a></p>
+      <p class="mb-0">&copy; <span id="footer-year"></span> ArchPrep PH. Payments handled securely by HitPay (GCash / QR Ph).</p>
+      <p class="mb-0"><a href="admin.html" style="color:#8A8678;font-size:.8rem">Admin</a></p>
     </div>
   </footer>
 
   <script>document.getElementById('footer-year').textContent = new Date().getFullYear();</script>
 
   <script type="module">
-    import { initNav }                          from './js/auth.js';
-    import { initFeaturedCatalog }              from './js/catalog.js';
-    import { api }                              from './js/api.js';
+    import { initNav }             from './js/auth.js';
+    import { initFeaturedCatalog } from './js/catalog.js';
+    import { api }                 from './js/api.js';
 
-    // Hydrate hero copy from display-safe settings (with static fallbacks already in HTML).
     api.getSettings().then((s) => {
       if (s.hero_headline) document.getElementById('hero-headline').textContent = s.hero_headline;
       if (s.hero_subhead)  document.getElementById('hero-subhead').textContent  = s.hero_subhead;
     });
 
-    // Featured product previews.
-    initFeaturedCatalog(document.getElementById('materials-preview'),  3, 'material');
-    initFeaturedCatalog(document.getElementById('quizzes-preview'),    3, 'quiz_pack');
+    initFeaturedCatalog(document.getElementById('materials-preview'), 4, 'material');
+    initFeaturedCatalog(document.getElementById('quizzes-preview'),   4, 'quiz_pack');
 
     initNav();
   </script>

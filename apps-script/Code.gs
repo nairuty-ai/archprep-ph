@@ -1425,7 +1425,34 @@ function requestAccess_(body) {
     });
   }
   logRequest_(email, productId, type, title, scope, code, String(body.ref || '').trim());
+  // Immediate "we've got your order" confirmation (best-effort; never blocks checkout).
+  try { sendCheckoutConfirmation_(email, type, title); } catch (e) {}
   return { ok: true, type: type };
+}
+
+/**
+ * Sends an instant confirmation as soon as a buyer submits their email at
+ * checkout, so they get a professional acknowledgement even though final
+ * delivery (code/material) is confirmed by the admin after payment.
+ */
+function sendCheckoutConfirmation_(email, type, title) {
+  if (!isEmail_(email)) return;
+  var settings = {};
+  try { settings = getSettings_() || {}; } catch (e) {}
+  var brand = settings.brand_name || 'ArchPrep PH';
+  var support = settings.contact_email || '';
+  var whatNext = (type === 'quiz')
+    ? 'Once we confirm your payment, your quiz is added to your account automatically — just log in at your account page to start. (Prefer a code? We can email one too.)'
+    : 'Once we confirm your payment, we\'ll email your material to this address.';
+  var body =
+    'Hi,\n\n' +
+    'Thanks for your order with ' + brand + '!\n\n' +
+    'Order: ' + (title || 'Your purchase') + '\n\n' +
+    'We\'ve received your request. ' + whatNext + '\n\n' +
+    'Payments are usually confirmed within a few hours during the day.\n\n' +
+    (support ? ('Questions? Just reply to this email or contact us at ' + support + '.\n\n') : '') +
+    '— The ' + brand + ' team';
+  MailApp.sendEmail(email, 'We\'ve received your order — ' + brand, body);
 }
 
 function logRequest_(email, productId, type, title, scope, code, ref) {

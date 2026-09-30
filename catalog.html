@@ -3,11 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Catalog — ArchPrep PH</title>
+  <title>ALE Review Catalog — ArchPrep PH</title>
+  <meta name="description" content="Browse all ALE review materials and practice quizzes for the Philippine Architect Licensure Examination. Pay with GCash or QR Ph, access instantly in your account." />
+
+  <meta property="og:type"        content="website" />
+  <meta property="og:title"       content="ALE Review Catalog — ArchPrep PH" />
+  <meta property="og:description" content="Review materials and practice quizzes for the Philippine Architect Licensure Examination. Pay with GCash, access instantly." />
+  <meta property="og:image"       content="assets/images/og-cover.jpg" />
+  <meta name="twitter:card"       content="summary_large_image" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+
+  <link rel="icon"       href="assets/icons/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/styles.css" />
   <script src="config.js"></script>
 </head>
@@ -15,9 +24,11 @@
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
-    <div class="container nav">
+    <div class="container nav-inner">
       <a class="brand" href="index.html">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+        </span>
         <span>ArchPrep PH</span>
       </a>
       <nav aria-label="Primary">
@@ -42,19 +53,21 @@
   </header>
 
   <main id="main">
-    <section class="section--tight">
+    <div class="page-head">
       <div class="container">
-        <p class="eyebrow">All products</p>
-        <h1>Catalog</h1>
+        <h1>ALE Review Catalog</h1>
         <p class="lead">Practice quizzes and review materials for the Philippine Architect Licensure Examination. Instant access in your account after payment.</p>
+        <div class="filter-row" role="tablist" aria-label="Filter by product type">
+          <button class="filter-tab active" role="tab" id="filter-all"      data-type="all"      aria-selected="true">All</button>
+          <button class="filter-tab"        role="tab" id="filter-material" data-type="material" aria-selected="false">Materials</button>
+          <button class="filter-tab"        role="tab" id="filter-quiz"     data-type="quiz_pack" aria-selected="false">Quizzes</button>
+        </div>
       </div>
-    </section>
+    </div>
 
-    <section class="section--tight">
-      <div class="container">
-        <div id="catalog-grid" aria-live="polite" aria-label="Product catalog"></div>
-      </div>
-    </section>
+    <div class="container" style="padding-top:2rem;padding-bottom:3rem">
+      <div id="catalog-root" aria-live="polite" aria-label="Product catalog"></div>
+    </div>
   </main>
 
   <footer class="site-footer">
@@ -75,22 +88,41 @@
         <ul>
           <li><a href="login.html">Sign in</a></li>
           <li><a href="my-learning.html">My Learning</a></li>
+          <li><a href="earnings.html">Earnings</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
         </ul>
       </div>
     </div>
     <div class="container footer-note">
       <p class="mb-0">© <span id="footer-year"></span> ArchPrep PH. Payments handled securely by HitPay (GCash / QR Ph). Access unlocks instantly in your account.</p>
+      <p class="mb-0" style="margin-top:.5rem"><a href="admin.html" style="color:#8A8678;font-size:.8rem">Admin</a></p>
     </div>
   </footer>
 
   <script>document.getElementById('footer-year').textContent = new Date().getFullYear();</script>
 
   <script type="module">
-    import { initNav } from './js/auth.js';
+    import { initNav }     from './js/auth.js';
     import { initCatalog } from './js/catalog.js';
-
-    initCatalog(document.getElementById('catalog-grid'));
     initNav();
+    initCatalog(document.getElementById('catalog-root'));
+    // Filter tabs
+    const tabs = document.querySelectorAll('.filter-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => { t.setAttribute('aria-selected','false'); t.classList.remove('active'); });
+        tab.setAttribute('aria-selected','true'); tab.classList.add('active');
+        const type = tab.dataset.type;
+        document.querySelectorAll('.course-card').forEach(card => {
+          card.closest('.course-card-wrap') && (card.closest('.course-card-wrap').hidden = type !== 'all' && card.dataset.type !== type);
+        });
+      });
+    });
   </script>
 </body>
 </html>

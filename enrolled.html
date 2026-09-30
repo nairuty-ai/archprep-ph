@@ -3,79 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Enrolled! — ArchPrep PH</title>
+  <title>Payment confirmed — ArchPrep PH</title>
+  <meta name="description" content="Your payment is being confirmed. Your ArchPrep PH access will unlock automatically in seconds." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/styles.css" />
   <script src="config.js"></script>
-  <style>
-    .enrolled-card {
-      max-width: 540px;
-      margin: 0 auto;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 2rem;
-      box-shadow: var(--shadow-soft);
-      text-align: center;
-    }
-    .enrolled-icon {
-      font-size: 3.5rem;
-      margin-bottom: 0.75rem;
-      display: block;
-    }
-    .enrolled-card h1 {
-      font-size: var(--fs-xl);
-      margin-bottom: 0.5rem;
-    }
-    .referral-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 1.25rem;
-      margin-top: 1.5rem;
-      text-align: left;
-    }
-    .referral-box h2 {
-      font-size: var(--fs-md);
-      margin-bottom: 0.35rem;
-    }
-    .referral-link-row {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .referral-link-input {
-      flex: 1;
-      min-width: 0;
-      padding: 0.55rem 0.75rem;
-      font-family: var(--font-body);
-      font-size: var(--fs-xs);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: #fff;
-      color: var(--ink);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .poll-status {
-      color: var(--muted);
-      font-size: var(--fs-xs);
-      margin-top: 0.5rem;
-    }
-  </style>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
-    <div class="container nav">
+    <div class="container nav-inner">
       <a class="brand" href="index.html">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+        </span>
         <span>ArchPrep PH</span>
       </a>
       <nav aria-label="Primary">
@@ -100,25 +45,14 @@
   </header>
 
   <main id="main">
-    <section class="section">
-      <div class="container">
-        <div id="enrolled-container" aria-live="polite">
-          <div class="enrolled-card">
-            <span class="enrolled-icon" aria-hidden="true">⏳</span>
-            <h1>Confirming your payment…</h1>
-            <p class="lead" style="color:var(--ink-soft);">This usually takes a few seconds. Please wait.</p>
-            <p class="poll-status" id="poll-status">Checking…</p>
-          </div>
-        </div>
-      </div>
-    </section>
+    <div id="enrolled-root" class="container" style="max-width:640px;padding:3rem 1rem;text-align:center;"></div>
   </main>
 
   <footer class="site-footer">
     <div class="container footer-grid">
       <div>
-        <p class="brand" style="color:#fff">ArchPrep PH</p>
-        <p>Review materials and practice quizzes for the Philippine Architect Licensure Examination. Instant access in your account after payment.</p>
+        <p style="color:#fff;font-family:var(--font-head);font-size:1.125rem;font-weight:600;margin:0 0 .5rem">ArchPrep PH</p>
+        <p style="color:rgba(255,255,255,.7);font-size:.875rem">Affordable ALE review materials and practice quizzes. Instant access after payment.</p>
       </div>
       <div>
         <h4>Explore</h4>
@@ -132,226 +66,28 @@
         <ul>
           <li><a href="login.html">Sign in</a></li>
           <li><a href="my-learning.html">My Learning</a></li>
+          <li><a href="earnings.html">Earnings</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
         </ul>
       </div>
     </div>
     <div class="container footer-note">
-      <p class="mb-0">© <span id="footer-year"></span> ArchPrep PH. Payments handled securely by HitPay (GCash / QR Ph). Access unlocks instantly in your account.</p>
+      <p class="mb-0">© <span id="footer-year"></span> ArchPrep PH. Payments handled securely by HitPay (GCash / QR Ph).</p>
+      <p class="mb-0" style="margin-top:.5rem"><a href="admin.html" style="color:rgba(255,255,255,.4);font-size:.8rem">Admin</a></p>
     </div>
   </footer>
 
   <script>document.getElementById('footer-year').textContent = new Date().getFullYear();</script>
-
   <script type="module">
-    import { requireSession, initNav } from './js/auth.js';
-    import { api } from './js/api.js';
-    import { el, setText } from './js/dom.js';
-    import { buildRefLink } from './js/referral.js';
-    import { supabase } from './js/supabase.js';
-
-    const MAX_ATTEMPTS = 15;   // 15 × 2s = 30 seconds
-    const POLL_INTERVAL_MS = 2000;
-
-    async function init() {
-      let user;
-      try {
-        user = await requireSession();
-      } catch {
-        return; // requireSession redirects
-      }
-
-      const params = new URLSearchParams(location.search);
-      const orderId = params.get('order_id');
-      const container = document.getElementById('enrolled-container');
-
-      if (!orderId) {
-        renderPending(container, null);
-        return;
-      }
-
-      await pollOrder(container, orderId, user);
-      initNav();
-    }
-
-    async function pollOrder(container, orderId, user) {
-      const pollStatus = document.getElementById('poll-status');
-      let attempts = 0;
-
-      const interval = setInterval(async () => {
-        attempts++;
-        if (pollStatus) setText(pollStatus, `Checking… (attempt ${attempts}/${MAX_ATTEMPTS})`);
-
-        let result;
-        try {
-          result = await api.pollOrderStatus(orderId);
-        } catch (err) {
-          // Non-fatal poll error — keep trying
-          return;
-        }
-
-        const { order, enrollment } = result;
-
-        if (order?.status === 'paid' && enrollment) {
-          clearInterval(interval);
-          // Fetch product name
-          let productTitle = 'your product';
-          try {
-            const p = await api.getProductById(enrollment.product_id);
-            productTitle = p.title;
-          } catch { /* ignore */ }
-
-          // Fetch referral code for sharing
-          let refCode = null;
-          try {
-            const profile = await api.getProfile();
-            refCode = profile?.ref_code ?? null;
-          } catch { /* ignore */ }
-
-          renderSuccess(container, productTitle, enrollment.product_id, refCode);
-          return;
-        }
-
-        if (attempts >= MAX_ATTEMPTS) {
-          clearInterval(interval);
-          renderPending(container, orderId);
-        }
-      }, POLL_INTERVAL_MS);
-    }
-
-    function renderSuccess(container, productTitle, productId, refCode) {
-      container.innerHTML = '';
-
-      const card = el('div', { class: 'enrolled-card' });
-
-      const icon = el('span', { class: 'enrolled-icon', attrs: { 'aria-hidden': 'true' } });
-      icon.textContent = '🎉';
-
-      const heading = el('h1', { text: "You're enrolled!" });
-
-      const sub = el('p', { class: 'lead' });
-      sub.style.color = 'var(--ink-soft)';
-      sub.textContent = 'You now have access to ';
-      const strong = el('strong', { text: productTitle });
-      sub.appendChild(strong);
-      sub.appendChild(document.createTextNode('.'));
-
-      const openBtn = el('a', {
-        class: 'btn btn--primary btn--lg',
-        text: 'Open in My Learning',
-        attrs: { href: '/my-learning.html' },
-      });
-      openBtn.style.marginTop = '1rem';
-
-      card.appendChild(icon);
-      card.appendChild(heading);
-      card.appendChild(sub);
-      card.appendChild(openBtn);
-
-      // Referral sharing section (Requirement 22.6)
-      if (refCode) {
-        const refBox = _buildReferralBox(refCode);
-        card.appendChild(refBox);
-      }
-
-      container.appendChild(card);
-    }
-
-    function renderPending(container, orderId) {
-      container.innerHTML = '';
-
-      const card = el('div', { class: 'enrolled-card' });
-
-      const icon = el('span', { class: 'enrolled-icon', attrs: { 'aria-hidden': 'true' } });
-      icon.textContent = '⏰';
-
-      const heading = el('h1', { text: 'Payment confirmation pending' });
-
-      const sub = el('p', {});
-      sub.style.color = 'var(--ink-soft)';
-      sub.textContent = "We're still confirming your payment. It can take a few minutes. Your access will unlock automatically once confirmed.";
-
-      const link = el('a', {
-        class: 'btn btn--outline',
-        text: 'Go to My Learning',
-        attrs: { href: '/my-learning.html' },
-      });
-      link.style.marginTop = '1rem';
-
-      card.appendChild(icon);
-      card.appendChild(heading);
-      card.appendChild(sub);
-      card.appendChild(link);
-
-      if (orderId) {
-        const note = el('p', {});
-        note.style.cssText = 'font-size:var(--fs-xs);color:var(--muted);margin-top:.75rem;';
-        note.textContent = 'Order reference: ' + orderId;
-        card.appendChild(note);
-      }
-
-      container.appendChild(card);
-    }
-
-    function _buildReferralBox(refCode) {
-      const refLink = buildRefLink(refCode);
-
-      const box = el('div', { class: 'referral-box' });
-
-      const heading = el('h2', { text: 'Share ArchPrep PH and earn rewards' });
-
-      const desc = el('p', {});
-      desc.style.cssText = 'font-size:var(--fs-xs);color:var(--ink-soft);margin-bottom:0;';
-      desc.textContent = 'Share your referral link. When someone buys using it, you earn a reward!';
-
-      const row = el('div', { class: 'referral-link-row' });
-
-      const input = el('input', {
-        class: 'referral-link-input',
-        attrs: {
-          type: 'text',
-          readonly: '',
-          value: refLink,
-          'aria-label': 'Your referral link',
-        },
-      });
-
-      const copyBtn = el('button', {
-        class: 'btn btn--outline',
-        text: 'Copy link',
-        attrs: { type: 'button', 'aria-label': 'Copy referral link' },
-      });
-
-      copyBtn.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(refLink);
-          setText(copyBtn, 'Copied!');
-          setTimeout(() => setText(copyBtn, 'Copy link'), 2000);
-        } catch {
-          input.select();
-          document.execCommand('copy');
-          setText(copyBtn, 'Copied!');
-          setTimeout(() => setText(copyBtn, 'Copy link'), 2000);
-        }
-      });
-
-      row.appendChild(input);
-      row.appendChild(copyBtn);
-
-      const earningsLink = el('a', {
-        text: 'View your earnings →',
-        attrs: { href: '/earnings.html' },
-      });
-      earningsLink.style.cssText = 'font-size:var(--fs-xs);font-weight:700;margin-top:.5rem;display:inline-block;';
-
-      box.appendChild(heading);
-      box.appendChild(desc);
-      box.appendChild(row);
-      box.appendChild(earningsLink);
-
-      return box;
-    }
-
-    init();
+    import { initNav } from './js/auth.js';
+    import { initEnrolled } from './js/enrolled.js';
+    initNav();
+    initEnrolled(document.getElementById('enrolled-root'));
   </script>
 </body>
 </html>
