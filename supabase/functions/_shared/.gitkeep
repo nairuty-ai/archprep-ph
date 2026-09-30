@@ -1,0 +1,2 @@
+# Shared Deno modules for Edge Functions: auth.ts, admin.ts, hitpay.ts, http.ts.
+# Placeholder so the directory exists before those modules land.

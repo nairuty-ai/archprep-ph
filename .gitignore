@@ -9,8 +9,17 @@ kiro_build_spec.md
 kiro_build_spec.txt
 Kiro_Build_Spec.docx
 
-# Node (not used now, but safe to ignore if ever added)
+# Node (test tooling only; the site itself has no build step)
 node_modules/
+
+# Secrets — Edge Function environment variables. Only .env.example is tracked.
+.env
+.env.*
+!.env.example
+
+# Supabase CLI local state
+supabase/.branches/
+supabase/.temp/
 
 # Temp/scratch files
 _*.py

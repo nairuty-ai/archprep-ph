@@ -4,21 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FAQ &amp; Contact — ArchPrep PH</title>
-  <meta name="description" content="Frequently asked questions about delivery, payments, refunds, and how quiz access codes work for ArchPrep PH." />
+  <meta name="description" content="Frequently asked questions about ArchPrep PH: how to create an account, pay with GCash, access quizzes, and the referral program." />
+
+  <meta property="og:type"        content="website" />
+  <meta property="og:title"       content="FAQ &amp; Contact — ArchPrep PH" />
+  <meta property="og:description" content="Answers about accounts, GCash payments, quiz access, and referral rewards for ArchPrep PH." />
+  <meta property="og:image"       content="assets/images/og-cover.jpg" />
+  <meta name="twitter:card"       content="summary_large_image" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <!-- Speed up the first API call: open connections to the Apps Script backend early. -->
-  <link rel="preconnect" href="https://script.google.com" crossorigin />
-  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="icon"       href="assets/icons/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/styles.css" />
   <script src="config.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <div id="announce" class="announce" hidden></div>
 
   <header class="site-header">
     <div class="container nav">
@@ -26,31 +28,27 @@
         <span class="brand-mark" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
         </span>
-        <span data-brand>ArchPrep PH</span>
+        <span>ArchPrep PH</span>
       </a>
       <nav aria-label="Primary">
         <ul class="nav-links">
           <li><a href="index.html">Home</a></li>
-          <li><a href="materials.html">Materials</a></li>
-          <li><a href="quizzes.html">Quizzes</a></li>
+          <li><a href="catalog.html">Catalog</a></li>
           <li><a href="faq.html" aria-current="page">FAQ</a></li>
         </ul>
       </nav>
-      <div class="nav-actions">
-        <a class="btn btn--primary" href="materials.html">Browse materials</a>
-        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-        </button>
-      </div>
+      <div id="nav-actions"></div>
+      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
     </div>
-    <div class="mobile-menu" id="mobile-menu">
+    <nav class="mobile-menu" id="mobile-menu" hidden aria-label="Mobile navigation">
       <ul>
         <li><a href="index.html">Home</a></li>
-        <li><a href="materials.html">Materials</a></li>
-        <li><a href="quizzes.html">Quizzes</a></li>
+        <li><a href="catalog.html">Catalog</a></li>
         <li><a href="faq.html">FAQ</a></li>
       </ul>
-    </div>
+    </nav>
   </header>
 
   <main id="main">
@@ -58,72 +56,106 @@
       <div class="container">
         <p class="eyebrow">Help &amp; contact</p>
         <h1>Frequently asked questions</h1>
-        <p class="lead">Everything about delivery, payments, and quiz access codes. Still stuck? Email us anytime.</p>
+        <p class="lead">Everything about accounts, payments, quiz access, and referral rewards. Still stuck? Email us anytime.</p>
       </div>
     </section>
 
     <section class="section--tight">
       <div class="container quiz-shell" style="max-width:760px">
-        <!--
-          v1 FAQ copy is hardcoded below. To edit later, the owner can change
-          this text directly, or we can wire it to a Settings/FAQ tab later.
-          (See ADMIN_GUIDE.md.)
-        -->
+
+        <p class="eyebrow" style="margin-top:.5rem">Accounts &amp; sign-in</p>
+
         <details class="faq-item" open>
-          <summary>How do I receive my materials after paying?</summary>
+          <summary>Do I need an account to buy something?</summary>
           <div class="faq-body">
-            <p class="mb-0">After your payment is confirmed, we email your download link to the address you used to pay — usually within a few hours. Materials are shared manually, so please be patient and check your spam / promotions folder if you don't see it.</p>
+            <p class="mb-0">Yes — you need a free account to purchase and access materials or quizzes. Creating one takes about 30 seconds: enter your email, enter the 6-digit code we send you, and you're in. No password, no card.</p>
           </div>
         </details>
+
+        <details class="faq-item">
+          <summary>How do I sign in? Is there a password?</summary>
+          <div class="faq-body">
+            <p class="mb-0">There is no password. We use a one-time email code every time you sign in. Enter your email on the <a href="login.html">sign-in page</a>, enter the 6-digit code we send you, and you're logged in. Codes expire in 10 minutes.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>I didn't receive the sign-in code. What do I do?</summary>
+          <div class="faq-body">
+            <p>Check your spam or promotions folder first — the code comes from a <em>no-reply</em> address. If it's not there, go back to the <a href="login.html">sign-in page</a>, re-enter your email, and tap <strong>Resend code</strong>. Codes expire after 10 minutes, so request a fresh one if yours is old.</p>
+            <p class="mb-0">Still nothing? Email us at <a href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a> and we'll help.</p>
+          </div>
+        </details>
+
+        <p class="eyebrow" style="margin-top:1.5rem">Payments</p>
 
         <details class="faq-item">
           <summary>What payment methods do you accept?</summary>
           <div class="faq-body">
-            <p class="mb-0">We accept <strong>GCash</strong> and <strong>QR Ph</strong> only, through a secure HitPay payment page. We do not accept credit or debit cards in this version, and we never see or store your payment details.</p>
+            <p class="mb-0">We accept <strong>GCash</strong> and <strong>QR Ph</strong> only, through a secure HitPay payment page. We do not accept credit or debit cards at this time. We never see or store your payment details — everything goes through HitPay's secure checkout.</p>
           </div>
         </details>
 
         <details class="faq-item">
-          <summary>How do quiz access codes work?</summary>
+          <summary>How quickly does my purchase appear in my account?</summary>
           <div class="faq-body">
-            <p>When you buy a quiz pack, we email you an access code (for example <strong>ARCH-7F3K</strong>). Go to the <a href="quiz.html">quiz page</a>, enter the quiz code (like <strong>structural-1</strong>) along with your access code, and your questions unlock.</p>
-            <p class="mb-0">Your score and full explanations appear immediately after you submit. Correct answers are never sent to your device until you submit, so the quiz stays a fair test.</p>
-          </div>
-        </details>
-
-        <details class="faq-item">
-          <summary>Do codes expire?</summary>
-          <div class="faq-body">
-            <p class="mb-0">Yes. Each code has an expiry date and may have a usage limit. If your code has expired or stopped working, email us and we'll sort it out.</p>
+            <p class="mb-0">Instantly — the moment your GCash or QR Ph payment is confirmed by HitPay, the item unlocks in <a href="my-learning.html">My Learning</a>. No waiting, no emails, no codes to enter. If something doesn't appear within a few minutes of paying, contact us.</p>
           </div>
         </details>
 
         <details class="faq-item">
           <summary>What's your refund policy?</summary>
           <div class="faq-body">
-            <p class="mb-0">Because materials and quizzes are digital and delivered immediately on request, sales are generally final. If something went wrong with your order or you were charged incorrectly, contact us and we'll make it right.</p>
+            <p class="mb-0">Because materials and quizzes are digital and unlock instantly, sales are generally final. If you were charged incorrectly, or something genuinely went wrong with your order, email us at <a href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a> and we'll make it right.</p>
+          </div>
+        </details>
+
+        <p class="eyebrow" style="margin-top:1.5rem">Accessing your purchases</p>
+
+        <details class="faq-item">
+          <summary>Where do I find my quizzes and materials after paying?</summary>
+          <div class="faq-body">
+            <p class="mb-0">Everything is in <a href="my-learning.html">My Learning</a>. Log in, go to My Learning, and you'll see all your purchases. Quizzes have a <strong>Take quiz</strong> button; materials have an <strong>Open</strong> button that downloads or opens the file. No codes, no email links.</p>
           </div>
         </details>
 
         <details class="faq-item">
-          <summary>Can I use my materials and quizzes on my phone?</summary>
+          <summary>Can I use my account on my phone?</summary>
           <div class="faq-body">
-            <p class="mb-0">Yes. The whole site, including the quizzes, is designed mobile-first and works smoothly on phones. Review materials are PDF/PowerPoint files you can open on any device.</p>
+            <p class="mb-0">Yes. The whole site — including quizzes — is designed mobile-first and works smoothly on any phone or tablet. Review materials are PDF files you can open in any browser or PDF app.</p>
           </div>
         </details>
 
         <details class="faq-item">
-          <summary>I bought the wrong pack / didn't get my email. What do I do?</summary>
+          <summary>How many times can I take a quiz?</summary>
           <div class="faq-body">
-            <p class="mb-0">No problem — just email us at <a data-contact-email href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a> with the email address you paid with, and we'll help you out.</p>
+            <p class="mb-0">Quiz attempts are set per pack — you'll see the attempt count in My Learning. Answers and explanations are shown after you submit, so each attempt is a fair test.</p>
+          </div>
+        </details>
+
+        <p class="eyebrow" style="margin-top:1.5rem">Referral program</p>
+
+        <details class="faq-item">
+          <summary>How does the referral program work?</summary>
+          <div class="faq-body">
+            <p>Sign in to get your personal referral link from <a href="account.html">My Account</a>. Share the link with friends. When a friend uses your link and completes a purchase, you earn a ₱9 reward.</p>
+            <p class="mb-0">Once your available balance reaches ₱100, you can request a cash payout to your GCash number from the <a href="earnings.html">Earnings</a> page.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>When do I get paid for a referral?</summary>
+          <div class="faq-body">
+            <p class="mb-0">Your referral reward appears as <em>available</em> after your friend's payment is confirmed. Payouts are processed manually — once you request one, we'll transfer the amount to your GCash and mark it as paid, usually within a few business days.</p>
           </div>
         </details>
 
         <div class="card center" style="margin-top:2rem">
           <h3 class="mb-0">Still have a question?</h3>
           <p class="desc">We're happy to help. Email us and we'll get back to you.</p>
-          <p class="mb-0"><a class="btn btn--primary btn--lg" data-contact-email href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></p>
+          <p class="mb-0"><a class="btn btn--primary btn--lg" href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></p>
         </div>
+
       </div>
     </section>
   </main>
@@ -131,30 +163,41 @@
   <footer class="site-footer">
     <div class="container footer-grid">
       <div>
-        <p class="brand" style="color:#fff"><span data-brand>ArchPrep PH</span></p>
-        <p>Affordable review materials and practice quizzes for the Philippine Architect Licensure Examination. Materials are delivered by email after purchase.</p>
+        <p class="brand" style="color:#fff">ArchPrep PH</p>
+        <p>Affordable review materials and practice quizzes for the Philippine Architect Licensure Examination. Access unlocks instantly in your account after payment.</p>
       </div>
       <div>
         <h4>Explore</h4>
         <ul>
-          <li><a href="materials.html">Materials</a></li>
-          <li><a href="quizzes.html">Quizzes</a></li>
+          <li><a href="catalog.html">Catalog</a></li>
           <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Account</h4>
+        <ul>
+          <li><a href="login.html">Sign in</a></li>
+          <li><a href="my-learning.html">My Learning</a></li>
+          <li><a href="earnings.html">Earnings</a></li>
         </ul>
       </div>
       <div>
         <h4>Contact</h4>
         <ul>
-          <li><a data-contact-email href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
+          <li><a href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
         </ul>
       </div>
     </div>
     <div class="container footer-note">
-      <p class="mb-0">© <span id="footer-year">2026</span> <span data-brand>ArchPrep PH</span>. Materials are delivered manually by email after purchase. Payments handled securely by HitPay (GCash / QR Ph).</p>
-      <p class="mb-0" style="margin-top:.5rem"><a href="admin.html" style="color:#8A8678">Admin</a></p>
+      <p class="mb-0">© <span id="footer-year"></span> ArchPrep PH. Payments handled securely by HitPay (GCash / QR Ph).</p>
+      <p class="mb-0" style="margin-top:.5rem"><a href="admin.html" style="color:#8A8678;font-size:.8rem">Admin</a></p>
     </div>
   </footer>
 
-  <script type="module" src="js/config-loader.js"></script>
+  <script>document.getElementById('footer-year').textContent = new Date().getFullYear();</script>
+  <script type="module">
+    import { initNav } from './js/auth.js';
+    initNav();
+  </script>
 </body>
 </html>

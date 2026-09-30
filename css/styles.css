@@ -152,6 +152,15 @@ ul { margin: 0 0 1rem; padding-left: 1.2rem; }
 .nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--accent); }
 .nav-actions { display: flex; align-items: center; gap: 0.5rem; }
 
+/* Simple checkmark list (account perks, etc.) */
+.check-list { list-style: none; margin: .5rem 0 0; padding: 0; }
+.check-list li { position: relative; padding-left: 1.75rem; margin-bottom: .6rem; line-height: 1.5; }
+.check-list li::before {
+  content: "\2713"; /* ✓ */
+  position: absolute; left: 0; top: 0;
+  color: var(--accent); font-weight: 800;
+}
+
 /* Logged-in account chip in the nav (name + circular initial avatar). */
 .nav-account-chip { display: inline-flex; align-items: center; gap: .5rem; text-decoration: none; }
 .nav-account-chip .nav-account-name { color: var(--ink); font-weight: 700; font-size: var(--fs-sm); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -169,10 +178,9 @@ ul { margin: 0 0 1rem; padding-left: 1.2rem; }
   border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; color: var(--ink);
 }
 .mobile-menu {
-  display: none; border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border);
   background: var(--surface); padding: 0.5rem 0 1rem;
 }
-.mobile-menu.open { display: block; }
 .mobile-menu ul { list-style: none; margin: 0; padding: 0; }
 .mobile-menu a {
   display: block; padding: 0.85rem 1.25rem; color: var(--ink);
@@ -273,7 +281,7 @@ ul { margin: 0 0 1rem; padding-left: 1.2rem; }
 .site-footer { background: var(--ink); color: #D7D9DC; margin-top: 3rem; padding: 2.5rem 0; }
 .site-footer a { color: #fff; }
 .footer-grid { display: grid; gap: 1.25rem; }
-@media (min-width: 720px) { .footer-grid { grid-template-columns: 2fr 1fr 1fr; } }
+@media (min-width: 720px) { .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; } }
 .site-footer h4 { color: #fff; font-family: var(--font-body); font-size: var(--fs-sm); letter-spacing: 0.04em; text-transform: uppercase; }
 .site-footer ul { list-style: none; padding: 0; }
 .site-footer ul li { margin-bottom: 0.4rem; }
@@ -690,3 +698,87 @@ body.admin { background: #EEF1F3; }
 /* Sitewide "refer & earn" ribbon entry point */
 .refer-ribbon { display: block; background: linear-gradient(135deg, var(--secondary), var(--secondary-dark)); color: #fff; text-align: center; padding: .6rem 1rem; font-weight: 700; font-size: var(--fs-sm); text-decoration: none; }
 .refer-ribbon:hover { color: #fff; filter: brightness(1.06); }
+
+/* ============================================================================
+   V2 COMPONENT STYLES — state boxes, account dropdown, toasts, section header.
+   Added when the Supabase-native frontend was built. These extend (not replace)
+   the v1 .state and .toast styles above.
+   ========================================================================== */
+
+/* ---- State boxes (states.js: renderLoading / renderEmpty / renderError) ---- */
+.state-box {
+  border: 1px dashed var(--border); border-radius: var(--radius);
+  background: var(--card); padding: 2.5rem 1.5rem;
+  text-align: center; color: var(--ink-soft);
+  display: flex; flex-direction: column; align-items: center; gap: .6rem;
+}
+.state-box .spinner { margin: 0; }
+.state-icon { font-size: 1.75rem; line-height: 1; margin: 0; }
+.state-message { margin: 0; font-size: var(--fs-sm); color: var(--ink-soft); }
+.state-error .state-icon::before { content: "⚠️"; }
+.state-loading .state-message { color: var(--muted); }
+
+/* ---- Toasts v2 (states.js: toast(msg, type)) ---- */
+/* Base .toast already defined above; add the BEM modifier variants used by states.js */
+.toast--success { background: var(--success); color: #fff; }
+.toast--error   { background: var(--error);   color: #fff; }
+.toast--info    { background: var(--secondary); color: #fff; }
+.toast--out     { opacity: 0; transition: opacity .3s ease; }
+
+/* ---- Account dropdown (auth.js: initNav) ---- */
+.account-chip {
+  display: inline-flex; align-items: center; gap: .45rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: .4rem .85rem;
+  font-family: var(--font-body); font-size: var(--fs-sm); font-weight: 700;
+  color: var(--ink); cursor: pointer; min-height: 38px;
+  transition: border-color .12s ease, background-color .12s ease;
+  white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis;
+}
+.account-chip:hover { border-color: var(--muted); background: #fff; }
+.account-chip::after { content: "▾"; font-size: .7rem; color: var(--muted); flex-shrink: 0; }
+.account-chip[aria-expanded="true"]::after { content: "▴"; }
+
+.account-dropdown {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 8px 24px rgba(27,36,48,.10);
+  min-width: 180px; list-style: none; margin: 0; padding: .3rem 0; z-index: 150;
+}
+.account-dropdown[hidden] { display: none; }
+.account-dropdown li { margin: 0; }
+.account-dropdown li[role="separator"] { border-top: 1px solid var(--border); margin: .25rem 0; }
+.account-dropdown a, .account-dropdown button {
+  display: block; width: 100%; text-align: left;
+  padding: .6rem 1rem; font-size: var(--fs-sm); font-weight: 600;
+  color: var(--ink); text-decoration: none; background: transparent; border: none;
+  cursor: pointer; min-height: var(--tap);
+  transition: background-color .1s ease, color .1s ease;
+}
+.account-dropdown a:hover, .account-dropdown button:hover {
+  background: var(--surface); color: var(--accent);
+}
+
+/* ---- Section header (flex row: title left, CTA right) ---- */
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+}
+
+/* ---- Hero trust line (index.html: Secure payment via HitPay…) ---- */
+.hero-trust {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: var(--fs-xs); color: var(--muted); margin-top: .75rem;
+}
+
+/* ---- Form: extend input styles to tel / number ---- */
+.field input[type="tel"],
+.field input[type="number"],
+.field input[type="password"] {
+  width: 100%; min-height: var(--tap); padding: .65rem .85rem;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-family: var(--font-body); font-size: var(--fs-md); background: #fff; color: var(--ink);
+}
+.field input[type="tel"]:focus-visible,
+.field input[type="number"]:focus-visible,
+.field input[type="password"]:focus-visible { border-color: var(--secondary); outline: none; }

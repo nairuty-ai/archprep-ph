@@ -1,0 +1,2 @@
+# Ordered SQL migrations, applied by the Supabase CLI (`supabase db push`).
+# Placeholder so the directory exists before 0001_schema_core.sql lands.

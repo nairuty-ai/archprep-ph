@@ -1,363 +1,229 @@
-# ADMIN_GUIDE.md — Running the site day to day
+# ADMIN_GUIDE.md — ArchPrep PH Admin Portal
 
-This is your everyday handbook. **You never need to touch code.** Everything
-here is done in your **Mission Control** Google Sheet and **Google Drive**, both
-under **`rehinaneel@gmail.com`**.
-
-Contents:
-
-- [The golden rules](#the-golden-rules)
-- [Add a new review material](#add-a-new-review-material)
-- [Add or price a quiz pack](#add-or-price-a-quiz-pack)
-- [Add quiz questions](#add-quiz-questions)
-- [After a sale: issue an access code](#after-a-sale-issue-an-access-code)
-- [The fulfilment checklist](#the-fulfilment-checklist)
-- [Delivery email template (copy & paste)](#delivery-email-template-copy--paste)
-- [Edit site text (brand, banner, hero, contact)](#edit-site-text-brand-banner-hero-contact)
-- [Seeing quiz usage](#seeing-quiz-usage)
-- [Troubleshooting](#troubleshooting)
+Everything you need to manage the platform day-to-day.
+Access the admin portal at `/admin.html` — requires signing in with an admin account.
 
 ---
 
-## The golden rules
+## Getting to the admin portal
 
-1. Edit content **only in the Sheet** (and upload files to Drive). Never edit code.
-2. **Header rows must not be changed** — only add/edit rows beneath them.
-3. After editing the Sheet, changes appear on the site **immediately** (refresh
-   the page). You do **not** need to redeploy anything for Sheet edits.
-4. Keep a column's format simple: prices are plain numbers, `active` is `TRUE`/
-   `FALSE`, dates are `YYYY-MM-DD`.
+1. Visit `https://your-site.com/admin.html`
+2. If you're not signed in, you'll be redirected to the login page.
+3. Sign in with `rehinaneel@gmail.com` or `nairutya.84@gmail.com`.
+4. The admin portal opens automatically. If you see "Access denied", your account
+   hasn't been granted admin rights — run the SQL from SETUP.md Part 2.1.
 
 ---
 
-## Add a new review material
+## Products tab
 
-**Step A — put the file in Drive**
+Products are the items students can buy: review materials and quiz packs.
 
-1. In Google Drive (signed in as `rehinaneel@gmail.com`), keep **one folder per
-   subject** (e.g. "Structural Design"). Upload the PDF/PowerPoint there.
-2. You do **not** share it publicly. You'll share it privately with each buyer
-   after they pay (see [fulfilment](#the-fulfilment-checklist)).
-3. *(Recommended)* Watermark each PDF with "Licensed to <buyer email>" to deter
-   sharing. Free PDF tools can do this.
+### Add a product
 
-**Step B — add a row in the `Products` tab**
+1. Admin portal → **Products** tab
+2. Fill in the **Add / Edit product** form:
+   - **Title**: the product name shown on the catalog page
+   - **Subtitle**: one-line description (optional)
+   - **Type**: `material` (PDF/file download) or `quiz_pack` (contains quizzes)
+   - **Subject**: e.g. `Structural Design`, `Building Utilities`
+   - **Slug**: URL-safe identifier, e.g. `structural-design-pack` — must be unique
+   - **Price (₱)**: whole number, e.g. `199`
+   - **Description**: full description shown on the product page
+   - **Includes**: comma-separated list of what's included (shown as bullets)
+3. Click **Save product**
+4. Upload a **thumbnail** (shown on catalog cards) and/or a **material file** (PDF/PPTX)
+5. Click **Publish** to make it visible on the catalog
 
-Fill one row:
+> A product must be published before students can see or buy it.
+> Unpublishing hides it from the catalog without deleting it.
 
-| column | what to put |
+### Edit a product
+
+Click **Edit** next to any product. The form pre-fills — change what you need and click **Save product**.
+
+### Delete a product
+
+Click **Delete**. This is blocked if any orders exist for that product (to protect financial records).
+
+---
+
+## Quizzes tab
+
+Quizzes are the individual quiz sets. A `quiz_pack` product can contain multiple quizzes.
+
+### Add a quiz
+
+1. Admin portal → **Quizzes** tab
+2. Fill in the form:
+   - **Title**: quiz name
+   - **Subject**: e.g. `Structural Design`
+   - **Slug**: URL-safe identifier
+   - **Time limit (minutes)**: set to 0 for no timer
+3. Click **Save quiz**
+
+### Assign a quiz to a product (quiz pack)
+
+1. Click **Assign packs** next to a quiz
+2. Select which `quiz_pack` products should include this quiz
+3. Click **Save**
+
+A quiz can belong to multiple packs. When a student buys a pack, they get access to all quizzes assigned to it.
+
+---
+
+## Questions tab
+
+Questions belong to a quiz. Students see them in the order set here.
+
+### Add a question
+
+1. Admin portal → **Questions** tab
+2. Select a quiz from the dropdown
+3. Fill in:
+   - **Question text**: the question
+   - **Options A–D**: answer choices (all four are required)
+   - **Correct answer**: A, B, C, or D
+   - **Explanation**: shown to students after they submit (optional but recommended)
+4. Click **Save question**
+
+### Reorder questions
+
+Drag questions to reorder them, or use the **Move up / Move down** buttons.
+
+### Edit or delete a question
+
+Click **Edit** or **Delete** next to any question.
+
+> Answer keys are **never sent to student browsers** — they are only revealed
+> after the student submits the quiz. This is enforced at the database level.
+
+---
+
+## Enrollments tab
+
+Enrollments track which students have access to which products.
+
+### Grant free access
+
+To give a student access to a product without payment (e.g. for a promo or correction):
+
+1. Admin portal → **Enrollments** tab
+2. Under **Grant access**:
+   - **User email**: the student's email
+   - **Product**: select from dropdown
+   - **Source**: `comp` (complimentary) or `credit` (credit note)
+3. Click **Grant access**
+
+### Revoke access
+
+Click **Revoke** next to an enrollment. This removes access and voids any open referral reward linked to the order.
+
+### Search enrollments
+
+Use the search box to filter by email or product name.
+
+---
+
+## Referrals tab
+
+Tracks referral rewards earned when referred users make a purchase.
+
+### Status types
+
+| Status | Meaning |
 |---|---|
-| product_id | a short unique id, e.g. `mat-utilities` |
-| type | `material` |
-| subject | the subject label, e.g. `Building Utilities` |
-| title | the display title shoppers see |
-| description | 1–2 short sentences |
-| price_php | a plain number, e.g. `199` |
-| hitpay_link | the HitPay payment link for this product (see SETUP Part 4) |
-| active | `TRUE` to show it, `FALSE` to hide it |
-| sort_order | a number controlling order (smaller appears first) |
+| `available` | Earned, eligible for payout |
+| `paid` | Payout transferred to GCash |
+| `void` | Cancelled (e.g. refunded order) |
 
-Refresh the Materials page — your new product appears. (If `hitpay_link` is still
-`REPLACE_ME...`, it shows a disabled "Coming soon" button until you add the link.)
+### Mark a referral as paid
 
----
+Once you've transferred the payout via GCash:
+1. Find the referral row
+2. Click **Mark paid**
 
-## Add or price a quiz pack
+This sets `paid_at` to now and changes status to `paid`.
 
-A **quiz pack** is the *product* people buy (it appears on the Quizzes page). The
-actual *questions* live in the `Quizzes` tab (next section).
+### Void a referral
 
-1. In the `Products` tab, add a row with `type` = **`quiz`** (same columns as a
-   material). Example: `product_id` = `quiz-utilities`, `title` = "Building
-   Utilities — Quiz Pack", `price_php` = `149`.
-2. To change a price, just edit `price_php` on that row.
-3. To temporarily remove a pack from sale, set `active` to `FALSE`.
+If the associated order was refunded or fraudulent:
+1. Click **Void**
+2. Enter a short note explaining why
+3. Click **Confirm**
 
 ---
 
-## Add quiz questions
+## Payouts tab
 
-Questions live in the **`Quizzes` tab — one row per question.**
+Tracks payout requests from students who've reached the ₱100 threshold.
 
-For each question, fill a row:
+### Process a payout
 
-| column | what to put |
-|---|---|
-| quiz_id | which quiz this question belongs to, e.g. `utilities-1`, `mock-2`. Use a tidy pattern: `<subject>-<number>`. Mock tests should start with `mock` (e.g. `mock-2`) so they get a timer. |
-| quiz_title | the display title of the quiz, e.g. "Building Utilities — Quiz 1" |
-| subject | the subject label |
-| question_number | the order within the quiz: `1`, `2`, `3`, … |
-| question_text | the question itself |
-| option_a / option_b / option_c / option_d | the answer choices. You may leave some blank for fewer than 4 options. |
-| correct_option | the letter of the correct choice: `A`, `B`, `C`, or `D` |
-| explanation | shown after the student submits — explain *why* it's correct |
-
-Tips:
-- Keep all rows for one quiz together and number them in order.
-- The **`correct_option`** and **`explanation`** are **never shown** to students
-  until they submit — they're safe to keep here.
-- The quiz id students type is the `quiz_id` value (e.g. `utilities-1`). Tell them
-  this id in the email along with their access code.
+When a student requests a payout:
+1. Check their GCash number shown in the request
+2. Transfer the amount via GCash
+3. Click **Mark sent** and enter the GCash reference number
+4. The system marks all their `available` referral rows as `paid`
 
 ---
 
-## After a sale: issue an access code
+## Incidents tab
 
-When someone buys a **quiz pack**, you create a code that unlocks it.
+Payment incidents are logged when the HitPay webhook receives a payload that can't be processed
+(e.g. unknown order ID, amount mismatch, duplicate event).
 
-In the **`AccessCodes` tab**, add a row:
+### Review an incident
 
-| column | what to put |
-|---|---|
-| code | make up a short, easy code, e.g. `ARCH-9KQ2` (avoid confusing characters like O/0) |
-| scope | what it unlocks: a specific quiz id (`utilities-1`), a subject prefix (`utilities` unlocks `utilities-1`, `utilities-2`, …), or `all` for everything |
-| expiry_date | when it stops working, `YYYY-MM-DD`, e.g. `2027-12-31` |
-| max_uses | how many times it can be submitted (e.g. `3`). Leave **blank** for unlimited. |
-| uses_count | start at `0` (the system counts up automatically) |
-| status | `active` (use `disabled` to switch a code off) |
-| notes | for your own reference, e.g. the buyer's email |
+Click **View** to see the full payload. Common causes:
+- **amount_mismatch**: someone may have tampered with the price. Check your HitPay dashboard.
+- **order_not_found**: webhook fired before the order was created. Usually safe to resolve.
+- **duplicate**: the webhook fired twice for the same payment. Safe to resolve.
 
-Then email the buyer their **quiz id** and **access code** (template below).
+### Resolve an incident
 
-> The system automatically increases `uses_count` each time the code is used to
-> submit a quiz, and refuses the code once it hits `max_uses` or its expiry date.
+Click **Resolve** once you've investigated. Resolved incidents are hidden by default
+(use **Show resolved** to see them).
 
 ---
 
-## The fulfilment checklist
+## Settings tab
 
-Do this for every order:
+Platform-wide configuration.
 
-- [ ] **Confirm payment** in your HitPay dashboard (correct amount, status paid).
-- [ ] **Note the buyer's email** (the one they paid with / gave you).
-- [ ] **If a material was bought:** in Drive, share the file/folder with that
-      email using **"specific people" (Restricted)** access, *or* send a view
-      link. (Restricted is safer.)
-- [ ] **If a quiz pack was bought:** add a row in `AccessCodes` (above) and note
-      the **quiz id(s)** they can take.
-- [ ] **Send the delivery email** (template below) with the Drive link and/or the
-      quiz id + access code.
-- [ ] Done. Keep the HitPay receipt for your records.
+| Key | Description | Example |
+|---|---|---|
+| `referral_amount` | PHP reward per referral | `9` |
+| `payout_threshold` | Minimum balance to request payout (₱) | `100` |
+| `reward_type` | `cash` (GCash payout) or `credit` (applied to next order) | `cash` |
+| `answer_reveal_mode` | `answered_only` (reveal only answered questions) or `full_reveal` (reveal all after submit) | `answered_only` |
+| `hero_headline` | Homepage hero heading text | `Pass the ALE with confidence.` |
+| `hero_subhead` | Homepage hero subheading text | `Focused review materials…` |
 
----
-
-## Delivery email template (copy & paste)
-
-> **Subject:** Your ArchPrep PH order — materials & quiz access
->
-> Hi [Buyer name],
->
-> Thank you for your purchase! Here's everything you need:
->
-> **Review materials**
-> [Subject] — [download/view link]
-> (If asked, sign in with the email address you used to buy. Please don't share
-> the file — it's licensed to you.)
->
-> **Practice quiz access**
-> Quiz page: https://YOUR-SITE.pages.dev/quiz.html
-> Quiz code: **[quiz_id, e.g. structural-1]**
-> Access code: **[code, e.g. ARCH-9KQ2]**
-> Open the quiz page, enter the quiz code and your access code, and your
-> questions will unlock. Your score and full explanations appear right after you
-> submit.
->
-> Your access code is valid until **[expiry date]**[ and can be used up to
-> [max_uses] times]. If anything doesn't work, just reply to this email.
->
-> Good luck with your review!
-> — The ArchPrep PH team
-
-*(Delete the part that doesn't apply if they only bought materials, or only a
-quiz pack. Replace `YOUR-SITE.pages.dev` with your real site address.)*
+Click a setting to edit, click **Save** to apply. Changes are live immediately.
 
 ---
 
-## Edit site text (brand, banner, hero, contact)
+## Users tab
 
-In the **`Settings` tab** (key in column A, value in column B):
+Lists all registered accounts.
 
-| key | what it controls |
-|---|---|
-| brand_name | the site name shown in the header and footer |
-| contact_email | the email shown in the footer and FAQ |
-| announcement_banner | a message bar across the top of every page. **Leave blank to hide it.** Put text in it (e.g. "Holiday sale — 20% off bundles!") to show it. |
-| hero_headline | the big headline on the home page |
-| hero_subhead | the supporting line under the headline |
+### Grant admin rights
 
-Edit a value, save, refresh the site — the change is live. Anything left blank
-falls back to sensible defaults.
+1. Find the user (search by email)
+2. Click **Grant admin**
 
-The **FAQ page** text is currently fixed in the page itself. If you'd like to be
-able to edit FAQs from the Sheet too, ask your developer — it's a small change.
+### Revoke admin rights
+
+Click **Revoke admin**. Blocked if that user is the last admin.
 
 ---
 
-## Seeing quiz usage
+## Security reminders
 
-The **`Attempts` tab** automatically logs each graded quiz: the date/time, the
-code used, the quiz id, and the score out of total. Use it to see how much your
-quizzes are being used. You don't need to edit this tab — just read it.
-
----
-
-## Troubleshooting
-
-- **A product isn't showing.** Check `active` is `TRUE`, and that you didn't leave
-  a blank row above it. Refresh the page.
-- **The site says a column is missing.** A header in that tab is misspelled or has
-  an extra space. Compare it against
-  [`sample-data/mission-control-template.md`](sample-data/mission-control-template.md)
-  and fix the spelling.
-- **A buyer says their code doesn't work.** Check the `AccessCodes` row: is
-  `status` = `active`? Is today before `expiry_date`? Is `uses_count` below
-  `max_uses`? Does `scope` cover the quiz they're taking? Tell them the exact
-  **quiz id** to enter — a common mistake is entering the wrong quiz.
-- **"Coming soon" button on a product.** Its `hitpay_link` is still the
-  `REPLACE_ME...` placeholder. Paste the real HitPay link.
-- **Nothing loads / "can't reach the server".** Usually the backend URL in
-  `config.js` is missing/wrong, or the Apps Script "Who has access" isn't set to
-  **Anyone**. See [`SETUP.md`](SETUP.md) Parts 2–3.
-
----
-
-## Using the Admin Portal (the easy way — no Sheet editing)
-
-You now have a password-protected admin portal. It does everything described
-above, but through forms. Open **`https://YOUR-SITE/admin.html`** (or add
-`/admin.html` to your site address). Everything you save here goes **live on the
-public site automatically** — no redeploy needed.
-
-> First-time setup (username/password + backend update) is in `SETUP.md`
-> Section 7. After that, just log in.
-
-### Logging in
-Enter your username and password. You stay logged in for 8 hours, then it asks
-you to log in again. After 5 wrong attempts it locks for 15 minutes.
-
-### The four sections
-Across the top: **Quizzes · Products · Access Codes · Settings.**
-
-### Build a quiz and its questions
-1. **Quizzes → + New quiz.** Enter a **Quiz ID** (lowercase, e.g. `structural-2`),
-   a title, the subject, and a **timer in minutes** (0 = no timer).
-   - Tip: keep a shared prefix so one subject code unlocks all its quizzes
-     (e.g. `structural-1`, `structural-2`, `structural-3` are all unlocked by a
-     code with scope `structural`).
-2. Click **Create & add questions.** (A quiz is saved once it has its first
-   question.)
-3. For each question: type the **question text**, fill **2–4 options**, click the
-   **radio button** next to the correct option, and add an **explanation** (shown
-   to the student after they submit). Save.
-4. Use **↑ / ↓** to reorder, **Edit** to change, **Delete** to remove. Deleting
-   renumbers the rest automatically.
-
-### Create and price a product
-1. **Products → + New product.**
-2. Choose **Type**: *Material* (a download you fulfil from Drive) or *Quiz pack*
-   (a sellable bundle that unlocks quizzes).
-3. Fill subject, title, description, **price (PHP)**, and the **HitPay link**.
-4. **Published / Draft toggle:** Published shows it on the public site; Draft
-   hides it.
-5. For a **quiz pack**, set **Unlock scope** (e.g. `structural` or `all`) so you
-   know which quizzes it unlocks — this pre-fills the code form later. For a
-   **material**, use **Drive note** to record which Drive file fulfils it.
-
-### Generate and send an access code (after a sale)
-1. **Access Codes → + New code.**
-2. Set the **scope** (a quiz id like `structural-1`, a subject prefix like
-   `structural`, or `all`), an **expiry date**, optional **max uses** (blank =
-   unlimited), and a **note** (e.g. the buyer's email).
-3. Click **Generate code.** The portal shows the new code with a **Copy** button
-   and a **ready-to-send email** you can copy and paste to the buyer.
-4. Later you can **Disable/Enable** or **Delete** any code from the list.
-
-### Edit site text
-**Settings** lets you change the brand name, contact email, announcement banner
-(blank = hidden), and hero headline/subhead. Save, and the public site updates on
-its next load.
-
-### Good to know
-- Every change is **live immediately** on the public site (it reads the same
-  Sheet).
-- Deleting anything asks you to confirm first.
-- You can still edit the Sheet directly if you ever prefer to — the portal and
-  the Sheet are just two views of the same data.
-
----
-
-## Purchase requests (email capture at checkout)
-
-The site now asks each buyer for their **email** before sending them to GCash /
-QR Ph. That gives you a tidy inbox of who's buying what — no more guessing.
-
-> Important: there is no automatic payment detection (that would need a paid
-> payment API). You still confirm each payment in your HitPay dashboard. The site
-> just captures the email and prepares the code/record for you.
-
-### How a quiz sale works now
-1. Student clicks **Buy** on a quiz pack → enters their email → is sent to HitPay.
-2. In the admin portal, open the **Requests** tab. You'll see their email with a
-   **Pending** quiz request and a ready-made **access code** (2 attempts, no date
-   expiry).
-3. Check your **HitPay dashboard** that the payment arrived from that person.
-4. Click **Confirm payment & activate**. The code becomes active and a
-   ready-to-send email pops up — copy it and send it to the buyer.
-5. The code works for **2 attempts**, then stops working automatically.
-
-### How a material sale works now
-1. Student clicks **Buy** on a material → enters their email → is sent to HitPay.
-2. In **Requests**, you'll see their email with a **Pending** material request.
-3. Confirm the payment in HitPay, **pick a validity date** (how long their access
-   should last — your choice), and click **Set validity & mark sent**.
-4. Share the Drive file with their email (set the Drive link to expire on/around
-   your chosen date if you want to enforce it).
-
-### Notes
-- A **pending** code does **not** work until you activate it, so nobody gets quiz
-  access before you've confirmed payment.
-- Deleting a still-pending quiz request also removes its un-activated code.
-- You can still create codes manually any time in the **Access Codes** tab (for
-  giveaways, support, etc.).
-
----
-
-## Bulk-upload quiz questions from a CSV (fast)
-
-Instead of typing questions one by one, you can upload a whole quiz at once from a
-spreadsheet.
-
-### The file format
-A plain **CSV** with this header row (Excel and Google Sheets both "Save as / Download
-as CSV"):
-
-```
-question,option_a,option_b,option_c,option_d,correct,explanation
-```
-
-- **question** — the question text.
-- **option_a / option_b** — required. **option_c / option_d** — optional (leave blank
-  for true/false or 3-option questions).
-- **correct** — the **letter** of the right option: `A`, `B`, `C`, or `D` (you can also
-  use `1`–`4`).
-- **explanation** — shown to the student after they submit (optional but recommended).
-
-A ready-made example is in `sample-data/quiz-import-template.csv`, and you can also
-click **Download CSV template** inside the portal.
-
-### Steps
-1. **Admin → Quizzes →** open a quiz (or create a new one) **→ Manage questions**.
-2. Click **⇪ Import CSV**.
-3. (Optional) **Download CSV template**, fill it in your spreadsheet, save as CSV.
-4. Choose your file. The portal shows a **preview**: how many questions are valid, a
-   sample of them, and any rows it had to skip (with the reason).
-5. Click **Import N questions**. They're added after any existing questions and go
-   live immediately.
-
-### Tips
-- Wrap any text containing commas in double quotes — most spreadsheets do this
-  automatically when exporting to CSV.
-- You can mix bulk import and manual editing freely; imported questions can be
-  edited, reordered, or deleted like any other.
-- Re-importing the same file adds the questions again (it doesn't replace) — so
-  import once, then edit.
+- The admin portal requires sign-in on every visit — sessions expire automatically.
+- The `service_role` key (used by Edge Functions) is never exposed to browsers.
+- Student answer keys are stored in a DB column that has **zero RLS policies** —
+  no client role can ever read them; only SECURITY DEFINER functions can.
+- All admin actions go through Edge Functions with `requireAdmin()` checks —
+  a student with a stolen JWT cannot call admin endpoints.

@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Private / gated pages — no value in indexing these
+Disallow: /admin.html
+Disallow: /quiz.html
+Disallow: /enrolled.html
+Disallow: /my-learning.html
+Disallow: /earnings.html
+Disallow: /account.html
+Disallow: /login.html
+
+# Update this URL to your domain once you have a custom domain set up
+Sitemap: https://archprep-ph.nairuty-patel-84-457.workers.dev/sitemap.xml

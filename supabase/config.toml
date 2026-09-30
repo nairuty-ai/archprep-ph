@@ -1,0 +1,112 @@
+# ============================================================================
+# Supabase CLI configuration — ArchPrep PH Platform v2
+# ----------------------------------------------------------------------------
+# Applied by `supabase start` (local stack) and `supabase functions deploy`.
+# This file holds NO secrets. Every key, salt, and SMTP credential lives in
+# Edge Function environment variables (see .env.example, Requirement 28.1).
+# ============================================================================
+
+project_id = "archprep-ph"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+# Caps any single PostgREST read; client reads are all narrow, owner-scoped,
+# or published-catalog queries.
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+# Local mail catcher. Auth one-time-password emails land here during local
+# development; production delivery goes through custom SMTP (Requirement 30.3).
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+# Material PDFs live in a private bucket, thumbnails in a separate public one.
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:8080"
+additional_redirect_urls = ["http://localhost:8080"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# Passwordless email + code: no confirmation link step, six-digit OTP.
+enable_confirmations = false
+otp_length = 6
+otp_expiry = 3600
+
+# ---------------------------------------------------------------------------
+# Edge Function JWT verification
+# ---------------------------------------------------------------------------
+# hitpay-webhook is the ONLY unauthenticated endpoint in the system. HitPay
+# cannot present a Supabase session token, so JWT verification is disabled for
+# this function and this function alone; it authenticates the caller with an
+# HMAC-SHA256 check over the raw body before touching the database.
+#
+# Every other Edge Function inherits the CLI default `verify_jwt = true` and
+# additionally derives the caller's identity from the bearer token in code
+# (_shared/auth.ts). Do not add a `verify_jwt = false` entry for any other
+# function.
+[functions.hitpay-webhook]
+verify_jwt = false
+
+# All other functions inherit the default verify_jwt = true and additionally
+# verify identity in code via _shared/auth.ts or _shared/admin.ts.
+# Listed here so `supabase functions deploy` picks them up by name.
+[functions.create-payment]
+verify_jwt = true
+
+[functions.get-quiz]
+verify_jwt = true
+
+[functions.grade-quiz]
+verify_jwt = true
+
+[functions.issue-material-url]
+verify_jwt = true
+
+[functions.request-payout]
+verify_jwt = true
+
+[functions.admin-products]
+verify_jwt = true
+
+[functions.admin-quizzes]
+verify_jwt = true
+
+[functions.admin-questions]
+verify_jwt = true
+
+[functions.admin-enrollments]
+verify_jwt = true
+
+[functions.admin-referrals]
+verify_jwt = true
+
+[functions.admin-settings]
+verify_jwt = true
+
+[functions.admin-incidents]
+verify_jwt = true
+
+[functions.admin-users]
+verify_jwt = true
