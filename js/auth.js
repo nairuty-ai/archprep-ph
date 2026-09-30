@@ -109,6 +109,16 @@ export async function initNav() {
   const session = await getSession();
   const user    = session?.user ?? null;
 
+  await renderNavActions(user);
+
+  // Subscribe to auth state changes so the nav updates instantly on sign-in/out
+  // without needing a page refresh.
+  supabase.auth.onAuthStateChange((event, newSession) => {
+    renderNavActions(newSession?.user ?? null);
+  });
+}
+
+async function renderNavActions(user) {
   // Fetch profile for display_name if logged in.
   let displayName = null;
   if (user) {
