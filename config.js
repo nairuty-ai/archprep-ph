@@ -22,8 +22,8 @@
  * ==========================================================================*/
 
 window.APP_CONFIG = {
-  SUPABASE_URL: "https://YOUR-PROJECT-REF.supabase.co",
-  SUPABASE_ANON_KEY: "YOUR-SUPABASE-ANON-KEY",
+  SUPABASE_URL: "https://iyqzrmdcplbmopruaaah.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_s-MIj3v5ccAv_V99_-A-OQ_btGAFfSV",
 };
 
 /* ----------------------------------------------------------------------------
