@@ -19,9 +19,7 @@
  * on the row can only have come from `products.price_php` (Requirement 11.1).
  */
 
-import { ORDER_CURRENCY } from '../_shared/hitpay.mjs';
-
-export { ORDER_CURRENCY };
+export const ORDER_CURRENCY = 'PHP';
 
 /** A Postgres uuid — `products.id`, `orders.id`, and the verified uid. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,7 +37,7 @@ export const PRODUCT_COLUMNS = 'id,price_php,published,title';
 export const ENROLLED_VIEW_PATH = 'enrolled.html';
 
 /** Path of the webhook function on the project, used to derive its URL. */
-export const WEBHOOK_FUNCTION_PATH = 'functions/v1/hitpay-webhook';
+export const WEBHOOK_FUNCTION_PATH = 'functions/v1/paymongo-webhook';
 
 /**
  * A referral code longer than this is a mistake or an attack, not a code.
@@ -310,11 +308,11 @@ export function buildOrderRow({ uid, product, refCode = null } = {}) {
   };
 }
 
-/** The HitPay identifiers to write back onto the order (Requirement 12.2). */
-export function paymentPatch({ paymentId, reference } = {}) {
+/** The PayMongo session ID to write back onto the order after checkout creation. */
+export function paymentPatch({ sessionId, referenceNumber } = {}) {
   return {
-    hitpay_payment_id: typeof paymentId === 'string' && paymentId !== '' ? paymentId : null,
-    hitpay_reference: typeof reference === 'string' && reference !== '' ? reference : null,
+    provider_payment_id: typeof sessionId === 'string' && sessionId !== '' ? sessionId : null,
+    provider_reference: typeof referenceNumber === 'string' && referenceNumber !== '' ? referenceNumber : null,
   };
 }
 
@@ -384,24 +382,7 @@ export function enrolledRedirectUrl(siteBaseUrl, orderId) {
   return `${base}/${ENROLLED_VIEW_PATH}?order=${encodeURIComponent(orderId)}`;
 }
 
-/**
- * The `hitpay-webhook` function URL, derived from the project URL.
- *
- * Derived rather than configured: the webhook is a function in this same
- * project, so a separate variable could only ever be right or wrong about where
- * it already is.
- *
- * @param {string} supabaseUrl project URL
- * @returns {string}
- */
-export function webhookUrlFor(supabaseUrl) {
-  if (typeof supabaseUrl !== 'string' || supabaseUrl.trim() === '') {
-    throw new TypeError('webhookUrlFor requires the project URL');
-  }
-  return `${trimmedBase(supabaseUrl)}/${WEBHOOK_FUNCTION_PATH}`;
-}
-
-/** Short description shown on the HitPay checkout page. */
+/** Short description shown on the PayMongo checkout page. */
 export function orderPurpose(product) {
   const title = isPlainObject(product) && typeof product.title === 'string' ? product.title.trim() : '';
   return title === '' ? 'ArchPrep PH purchase' : title.slice(0, 255);

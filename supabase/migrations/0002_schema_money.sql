@@ -36,8 +36,8 @@ create table public.orders (
   amount_php        numeric(12,2) not null check (amount_php > 0),
   currency          char(3) not null default 'PHP',
   status            order_status not null default 'pending',
-  hitpay_payment_id text,
-  hitpay_reference  text,
+  provider_payment_id text,
+  provider_reference  text,
   ref_code          text,
   created_at        timestamptz not null default now(),
   paid_at           timestamptz
@@ -50,9 +50,9 @@ comment on column public.orders.amount_php is
 -- orders may coexist before HitPay assigns an id. A plain unique constraint
 -- would work in Postgres (nulls are distinct) but a partial index states the
 -- intent and keeps the index off the pending rows.
-create unique index orders_hitpay_payment_id_key
-  on public.orders (hitpay_payment_id)
-  where hitpay_payment_id is not null;
+create unique index orders_provider_payment_id_key
+  on public.orders (provider_payment_id)
+  where provider_payment_id is not null;
 
 -- Supports the buyer's own order history and the enrolled-confirmation poll.
 create index orders_user_idx on public.orders (user_id, created_at desc);
@@ -162,7 +162,7 @@ create table public.payment_incidents (
   id                uuid primary key default gen_random_uuid(),
   kind              incident_kind not null,
   order_id          uuid references public.orders(id) on delete set null,
-  hitpay_payment_id text,
+  provider_payment_id text,
   reported_amount   numeric(12,2),
   reported_currency text,
   stored_amount     numeric(12,2),

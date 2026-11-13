@@ -57,16 +57,12 @@ otp_expiry = 3600
 # ---------------------------------------------------------------------------
 # Edge Function JWT verification
 # ---------------------------------------------------------------------------
-# hitpay-webhook is the ONLY unauthenticated endpoint in the system. HitPay
+# paymongo-webhook is the ONLY unauthenticated endpoint in the system. PayMongo
 # cannot present a Supabase session token, so JWT verification is disabled for
 # this function and this function alone; it authenticates the caller with an
-# HMAC-SHA256 check over the raw body before touching the database.
-#
-# Every other Edge Function inherits the CLI default `verify_jwt = true` and
-# additionally derives the caller's identity from the bearer token in code
-# (_shared/auth.ts). Do not add a `verify_jwt = false` entry for any other
-# function.
-[functions.hitpay-webhook]
+# HMAC-SHA256 check over the raw body (Paymongo-Signature header) before
+# touching the database. Do not add verify_jwt = false for any other function.
+[functions.paymongo-webhook]
 verify_jwt = false
 
 # All other functions inherit the default verify_jwt = true and additionally

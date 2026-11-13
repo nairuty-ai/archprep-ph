@@ -31,11 +31,11 @@
 import { HttpError, configMissing, json, withEnvelope } from "../_shared/http.ts";
 import { requireUser } from "../_shared/auth.ts";
 import {
-  createPaymentRequest,
-  isHitpayTimeout,
-  isHitpayUpstreamFailure,
-  paymentRequestTarget,
-} from "../_shared/hitpay.ts";
+  createCheckoutSession,
+  isPaymongoTimeout,
+  isPaymongoUpstreamFailure,
+  checkoutSessionTarget,
+} from "../_shared/paymongo.ts";
 import {
   buildOrderRow,
   enrolledRedirectUrl,
@@ -54,7 +54,6 @@ import {
   purchasableProduct,
   readOrderIntent,
   resolveSiteBaseUrl,
-  webhookUrlFor,
 } from "./orders.mjs";
 
 /** Ceiling on each database call, so a stalled database cannot hang the request. */
@@ -217,11 +216,7 @@ async function markFailed(ctx: ServiceContext, orderId: string): Promise<void> {
 }
 
 /**
- * The HitPay payment request for an order that already exists.
- *
- * Requirement 12.4: an error and a timeout have the same consequence — the order
- * moves to `failed` and the error travels on to the front end, which shows the
- * retry message. `isHitpayTimeout` only separates the two in the log.
+ * Create a PayMongo checkout session for an order that already exists.
  */
 async function requestPayment(
   ctx: ServiceContext,
@@ -229,20 +224,19 @@ async function requestPayment(
   product: { title: string | null },
 ) {
   try {
-    return await createPaymentRequest({
+    return await createCheckoutSession({
       amountPhp: order.amountPhp as number | string,
       referenceNumber: order.id,
-      // Requirement 12.5: HitPay returns the buyer to the enrolled view.
-      redirectUrl: enrolledRedirectUrl(ctx.siteBaseUrl, order.id),
-      webhookUrl: webhookUrlFor(ctx.supabaseUrl),
-      purpose: orderPurpose(product),
+      successUrl: enrolledRedirectUrl(ctx.siteBaseUrl, order.id),
+      cancelUrl: `${ctx.siteBaseUrl}/catalog.html`,
+      description: orderPurpose(product),
     });
   } catch (error) {
     await markFailed(ctx, order.id);
-    if (isHitpayUpstreamFailure(error)) {
+    if (isPaymongoUpstreamFailure(error)) {
       console.error("payment request failed", {
         orderId: order.id,
-        timeout: isHitpayTimeout(error),
+        timeout: isPaymongoTimeout(error),
       });
     }
     throw error;
@@ -299,9 +293,9 @@ async function handle(req: Request): Promise<Response> {
     return json({ already_owned: true, product_id: product.id });
   }
 
-  // Requirement 13.5: the HitPay configuration is checked before the order row
-  // exists, so a missing variable leaves nothing behind to reconcile.
-  paymentRequestTarget();
+  // Check PayMongo configuration before the order row exists, so a missing
+  // variable leaves nothing behind to reconcile.
+  checkoutSessionTarget();
 
   const order = await insertOrder(
     ctx,

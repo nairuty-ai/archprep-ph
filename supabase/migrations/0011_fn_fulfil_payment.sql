@@ -10,7 +10,7 @@
 -- Depends on:
 --   0001  enum types order_status, enrollment_source, referral_status,
 --         reward_type, incident_kind; profiles; products
---   0002  orders (partial unique index on hitpay_payment_id), enrollments
+--   0002  orders (partial unique index on provider_payment_id), enrollments
 --         (enrollments_user_product_key), referrals (unique order_id,
 --         referrals_no_self), payment_incidents
 --   0003  mask_email()
@@ -73,11 +73,11 @@ begin
   --     duplicate deliveries (Requirement 16.6): the second call resumes only
   --     after the first commits, then re-reads the row under READ COMMITTED and
   --     sees status = 'paid'. The unique constraints still backstop it.
-  --     The partial unique index on hitpay_payment_id guarantees at most one
+  --     The partial unique index on provider_payment_id guarantees at most one
   --     matching row (Requirement 15.1: "the single orders row").
   select * into v_order
   from public.orders
-  where hitpay_payment_id = p_payment_id
+  where provider_payment_id = p_payment_id
   for update;
 
   -- (2) Unknown payment identifier (Requirements 15.7, 16.10). Zero writes to
@@ -85,7 +85,7 @@ begin
   --     and it commits so the webhook can answer 200.
   if not found then
     insert into public.payment_incidents
-      (kind, hitpay_payment_id, reported_amount, reported_currency, payload)
+      (kind, provider_payment_id, reported_amount, reported_currency, payload)
     values ('unmatched_payment', p_payment_id,
             case when p_reported_amount is not null
                   and p_reported_amount <> 'NaN'::numeric
@@ -109,7 +109,7 @@ begin
   --     order, the enrollment and the referral alone.
   if v_order.status = 'refunded' then
     insert into public.payment_incidents
-      (kind, order_id, hitpay_payment_id, reported_amount, reported_currency,
+      (kind, order_id, provider_payment_id, reported_amount, reported_currency,
        stored_amount, stored_currency, payload)
     values ('out_of_order_status', v_order.id, p_payment_id,
             case when p_reported_amount is not null
@@ -149,7 +149,7 @@ begin
      or v_reported = 'NaN'::numeric
      or round(v_reported, 2) <> round(v_order.amount_php, 2) then
     insert into public.payment_incidents
-      (kind, order_id, hitpay_payment_id, reported_amount, reported_currency,
+      (kind, order_id, provider_payment_id, reported_amount, reported_currency,
        stored_amount, stored_currency, payload)
     values ('amount_mismatch', v_order.id, p_payment_id, v_fit,
             p_reported_currency, v_order.amount_php, v_order.currency, p_payload);
@@ -163,7 +163,7 @@ begin
   if p_reported_currency is null
      or upper(btrim(p_reported_currency)) <> upper(btrim(v_order.currency)) then
     insert into public.payment_incidents
-      (kind, order_id, hitpay_payment_id, reported_amount, reported_currency,
+      (kind, order_id, provider_payment_id, reported_amount, reported_currency,
        stored_amount, stored_currency, payload)
     values ('currency_mismatch', v_order.id, p_payment_id, v_fit,
             p_reported_currency, v_order.amount_php, v_order.currency, p_payload);
@@ -211,7 +211,7 @@ begin
       -- referrals_no_self constraint would refuse one anyway) and the attempt
       -- is recorded against the order for admin review.
       insert into public.payment_incidents
-        (kind, order_id, hitpay_payment_id, payload)
+        (kind, order_id, provider_payment_id, payload)
       values ('self_referral', v_order.id, p_payment_id, p_payload);
 
     else

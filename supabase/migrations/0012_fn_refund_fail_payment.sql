@@ -13,7 +13,7 @@
 --
 -- Depends on:
 --   0001  enum types order_status, referral_status, incident_kind
---   0002  orders (partial unique index on hitpay_payment_id), enrollments
+--   0002  orders (partial unique index on provider_payment_id), enrollments
 --         (enrollments_user_product_key), referrals (unique order_id),
 --         payment_incidents
 --   0005  the revoke-first baseline and FORCE RLS on orders/enrollments/
@@ -96,10 +96,10 @@ begin
   --     concurrent refund deliveries safe (Requirement 17.7): the second call
   --     resumes only after the first commits, then re-reads the row under READ
   --     COMMITTED and sees status = 'refunded'. The partial unique index on
-  --     hitpay_payment_id guarantees at most one matching row.
+  --     provider_payment_id guarantees at most one matching row.
   select * into v_order
   from public.orders
-  where hitpay_payment_id = p_payment_id
+  where provider_payment_id = p_payment_id
   for update;
 
   -- (2) Refund for an unknown payment identifier (Requirement 17.8). Zero
@@ -108,7 +108,7 @@ begin
   --     reported amount and currency are retained on it (Requirement 15.8).
   if not found then
     insert into public.payment_incidents
-      (kind, hitpay_payment_id, reported_amount, reported_currency, payload)
+      (kind, provider_payment_id, reported_amount, reported_currency, payload)
     values ('unmatched_refund', p_payment_id, v_fit, p_reported_currency,
             p_payload);
     return jsonb_build_object('outcome', 'unmatched_refund');
@@ -227,7 +227,7 @@ begin
   --     committed status and lands on the matching branch below.
   select * into v_order
   from public.orders
-  where hitpay_payment_id = p_payment_id
+  where provider_payment_id = p_payment_id
   for update;
 
   -- (2) Unknown payment identifier: zero writes to orders, enrollments and
@@ -235,7 +235,7 @@ begin
   --     recorded the same way fulfilment records it).
   if not found then
     insert into public.payment_incidents
-      (kind, hitpay_payment_id, reported_amount, reported_currency, payload)
+      (kind, provider_payment_id, reported_amount, reported_currency, payload)
     values ('unmatched_payment', p_payment_id, v_fit, p_reported_currency,
             p_payload);
     return jsonb_build_object('outcome', 'unmatched');
@@ -249,7 +249,7 @@ begin
   --     the only row written, and it commits so the webhook answers 200.
   if v_order.status = 'paid' then
     insert into public.payment_incidents
-      (kind, order_id, hitpay_payment_id, reported_amount, reported_currency,
+      (kind, order_id, provider_payment_id, reported_amount, reported_currency,
        stored_amount, stored_currency, payload)
     values ('out_of_order_status', v_order.id, p_payment_id, v_fit,
             p_reported_currency, v_order.amount_php, v_order.currency,
@@ -263,7 +263,7 @@ begin
   --     reversal audit trail would be lost.
   if v_order.status = 'refunded' then
     insert into public.payment_incidents
-      (kind, order_id, hitpay_payment_id, reported_amount, reported_currency,
+      (kind, order_id, provider_payment_id, reported_amount, reported_currency,
        stored_amount, stored_currency, payload)
     values ('out_of_order_status', v_order.id, p_payment_id, v_fit,
             p_reported_currency, v_order.amount_php, v_order.currency,

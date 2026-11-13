@@ -1,6 +1,6 @@
 # SETUP.md — ArchPrep PH v2 Deployment Guide
 
-Complete first-time setup: Supabase database, Edge Functions, HitPay payments, and Cloudflare Pages.
+Complete first-time setup: Supabase database, Edge Functions, PayMongo payments, and Cloudflare Pages.
 Follow every step in order. You can stop and come back anytime.
 
 **Owner accounts bootstrapped as admins:**
@@ -17,7 +17,7 @@ Follow every step in order. You can stop and come back anytime.
 | Backend functions | Supabase Edge Functions (Deno) | Free |
 | File storage | Supabase Storage | Free (1 GB) |
 | Website hosting | Cloudflare Pages | Free |
-| Payments | HitPay | 0% fee (GCash) |
+| Payments | PayMongo | GCash, Maya, GrabPay, card |
 
 ---
 
@@ -163,11 +163,11 @@ Run each of these (replace the placeholder values):
 # Your Supabase service-role key (from Part 1.2)
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY="eyJhbGci..."
 
-# HitPay API key (from your HitPay dashboard → API Keys)
-supabase secrets set HITPAY_API_KEY="your-hitpay-api-key"
+# PayMongo secret key (from PayMongo dashboard → Developers → API Keys)
+supabase secrets set PAYMONGO_SECRET_KEY="sk_live_your-secret-key"
 
-# HitPay webhook salt (from HitPay dashboard → Payment Buttons → Webhook)
-supabase secrets set HITPAY_WEBHOOK_SALT="your-hitpay-webhook-salt"
+# PayMongo webhook secret (from PayMongo dashboard → Developers → Webhooks)
+supabase secrets set PAYMONGO_WEBHOOK_SECRET="whsk_your-webhook-secret"
 
 # Supabase JWT secret (from Project Settings → API → JWT Settings → JWT Secret)
 supabase secrets set SUPABASE_JWT_SECRET="your-jwt-secret"
@@ -190,48 +190,49 @@ see 15 functions listed, all with a green "Active" status.
 
 ---
 
-## Part 6 — HitPay setup
+## Part 6 — PayMongo setup
 
-### 6.1 Create a HitPay account
+### 6.1 Create a PayMongo account
 
-1. Go to [hitpay.com](https://hitpay.com) and sign up for a business account.
-2. Complete KYC verification (required for live payments).
-3. Enable **GCash** and **QR Ph** as payment methods.
+1. Go to [paymongo.com](https://paymongo.com) and sign up for a business account.
+2. Complete KYC verification (ID required; approval takes 1–3 business days).
+3. Once approved, go to **Developers → API Keys** in your dashboard.
 
 ### 6.2 Sandbox testing (before going live)
 
-HitPay provides a sandbox environment at [dashboard.sandbox.hit-pay.com](https://dashboard.sandbox.hit-pay.com).
-Use sandbox keys while testing — no real money moves.
+PayMongo provides test keys prefixed with `sk_test_` and `pk_test_`. Use these while testing — no real money moves.
 
-Update your secrets to sandbox values:
+Set sandbox keys:
 ```bash
-supabase secrets set HITPAY_API_KEY="sandbox-key-here"
-supabase secrets set HITPAY_SALT="sandbox-salt-here"
+supabase secrets set PAYMONGO_SECRET_KEY="sk_test_your-test-secret-key"
+supabase secrets set PAYMONGO_WEBHOOK_SECRET="whsk_your-test-webhook-secret"
 ```
 
-Also update `supabase/functions/_shared/hitpay.ts` — the `HITPAY_BASE` constant:
-- Sandbox: `https://api.sandbox.hit-pay.com/v1`
-- Live:    `https://api.hit-pay.com/v1`
+No code changes needed to switch between sandbox and live — only the keys change.
 
-### 6.3 Configure the webhook
+### 6.3 Register the webhook
 
-In your HitPay dashboard → **Settings → Payment Buttons / API → Webhook**:
+In your PayMongo dashboard → **Developers → Webhooks → Add endpoint**:
 
-- **Webhook URL**: `https://YOUR-PROJECT-REF.supabase.co/functions/v1/hitpay-webhook`
-- **Copy the salt** shown — you already set it as `HITPAY_SALT` above.
+- **URL**: `https://iyqzrmdcplbmopruaaah.supabase.co/functions/v1/paymongo-webhook`
+- **Events**: select `checkout_session.payment.paid`
+- After saving, copy the **Signing Secret** shown — set it:
+  ```bash
+  supabase secrets set PAYMONGO_WEBHOOK_SECRET="whsk_the-secret-shown"
+  ```
 
 ### 6.4 Switch to live keys
 
-When ready to accept real payments:
+When KYC is approved and testing is complete:
 
-1. Get your live API key from the HitPay live dashboard.
+1. Get your live keys from PayMongo dashboard → **Developers → API Keys** (live tab).
 2. Update secrets:
    ```bash
-   supabase secrets set HITPAY_API_KEY="live-key"
-   supabase secrets set HITPAY_WEBHOOK_SALT="live-salt"
+   supabase secrets set PAYMONGO_SECRET_KEY="sk_live_your-live-key"
+   supabase secrets set PAYMONGO_WEBHOOK_SECRET="whsk_your-live-webhook-secret"
    ```
-3. Update `HITPAY_BASE` in `hitpay.ts` to the live URL.
-4. Re-deploy: `supabase functions deploy hitpay-webhook create-payment`
+3. Register a new live webhook endpoint in PayMongo (same URL, same events).
+4. Re-deploy: `supabase functions deploy paymongo-webhook create-payment`
 
 ---
 
@@ -289,13 +290,13 @@ Work through this after everything is deployed:
 - [ ] **Sign in** at your live URL — you should receive a 6-digit OTP email
 - [ ] **Admin access** — sign in as `rehinaneel@gmail.com`, visit `/admin.html` — you should see the admin portal
 - [ ] **Create a product** — in admin portal → Products → add one test product, set price, upload a thumbnail, publish it
-- [ ] **Test checkout** — in sandbox mode, go through the full buy flow: catalog → product → pay (HitPay sandbox) → enrolled.html → My Learning
+- [ ] **Test checkout** — in sandbox mode, go through the full buy flow: catalog → product → pay (PayMongo test mode) → enrolled.html → My Learning
 - [ ] **Verify webhook** — check admin portal → Incidents for any webhook failures; verify the order appears as paid
 - [ ] **Verify enrollment** — the test product should appear in My Learning immediately after payment
 - [ ] **Test quiz** (if you have a quiz product) — take a quiz, submit, verify score + explanations appear
 - [ ] **Test material download** — open a material from My Learning, verify the signed URL works
 - [ ] **Test referral** — visit `/?ref=TESTCODE`, sign in, buy something, check that a referral row appears
-- [ ] **Switch to live HitPay keys** when all tests pass
+- [ ] **Switch to live PayMongo keys** when all tests pass
 
 ---
 
@@ -320,7 +321,7 @@ See [ADMIN_GUIDE.md](ADMIN_GUIDE.md) for:
 `supabase secrets set SUPABASE_JWT_SECRET="..."` and redeploy.
 
 **Webhook returns 400 / HMAC mismatch**
-→ Verify `HITPAY_SALT` matches exactly what HitPay shows in the dashboard.
+→ Verify `PAYMONGO_WEBHOOK_SECRET` matches exactly what PayMongo shows in Developers → Webhooks.
 Whitespace counts — copy-paste carefully.
 
 **Products not showing on catalog**
