@@ -124,10 +124,14 @@ begin
   end if;
 
   -- grantee 0 in an aclitem is PUBLIC.
+  -- The ACL column is passed raw, not coalesced to an empty array: aclexplode
+  -- rejects a zero-dimensional array, and being STRICT it already yields zero
+  -- rows for a NULL ACL — which is the answer we want, since a NULL ACL means
+  -- default privileges and therefore no explicit client grant.
   select count(*) into v_table_grants
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
-    cross join lateral aclexplode(coalesce(c.relacl, '{}'::aclitem[])) a
+    cross join lateral aclexplode(c.relacl) a
    where n.nspname = 'public'
      and c.relname = 'questions'
      and (a.grantee = 0 or a.grantee::regrole::text = any (v_client_roles));
@@ -136,7 +140,7 @@ begin
     from pg_attribute att
     join pg_class c     on c.oid = att.attrelid
     join pg_namespace n on n.oid = c.relnamespace
-    cross join lateral aclexplode(coalesce(att.attacl, '{}'::aclitem[])) a
+    cross join lateral aclexplode(att.attacl) a
    where n.nspname = 'public'
      and c.relname = 'questions'
      and att.attnum > 0

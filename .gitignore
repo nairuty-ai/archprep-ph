@@ -13,8 +13,11 @@ Kiro_Build_Spec.docx
 node_modules/
 
 # Secrets — Edge Function environment variables. Only .env.example is tracked.
+# `*.env` also matters: a bare `.env*` rule would miss files like token.env,
+# which hold access tokens and must never reach the remote.
 .env
 .env.*
+*.env
 !.env.example
 
 # Supabase CLI local state
