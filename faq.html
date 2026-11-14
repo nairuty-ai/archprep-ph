@@ -14,7 +14,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800&display=swap" rel="stylesheet" />
   <link rel="icon"       href="assets/icons/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/styles.css" />
   <script src="config.js"></script>
@@ -22,31 +22,78 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
-  <header class="site-header">
-    <div class="container nav">
-      <a class="brand" href="index.html">
-        <span class="brand-mark" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
-        </span>
-        <span>ArchPrep PH</span>
-      </a>
-      <nav aria-label="Primary">
-        <ul class="nav-links">
-          <li><a href="index.html">Home</a></li>
-          <li><a href="catalog.html">Catalog</a></li>
-          <li><a href="faq.html" aria-current="page">FAQ</a></li>
-        </ul>
-      </nav>
-      <div id="nav-actions"></div>
-      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-      </button>
+  <div class="promo-bar" id="promo-bar" hidden>
+    <div class="promo-inner">
+      <p class="promo-text"><strong>New to ArchPrep PH?</strong> <span>Create a free account in 30 seconds and get your own referral link &mdash; earn &#x20B1;9 for every friend who buys.</span></p>
+      <a class="promo-cta" href="login.html">Get started</a>
     </div>
+    <button class="promo-close" type="button" aria-label="Dismiss announcement">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+
+  <header class="site-header">
+    <div class="nav-inner">
+      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+
+      <a class="brand" href="index.html" aria-label="ArchPrep PH home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+        </span>
+        <span>ArchPrep <span class="brand-accent">PH</span></span>
+      </a>
+
+      <div class="nav-explore">
+        <a href="catalog.html" aria-haspopup="true">Explore</a>
+        <div class="explore-menu" role="menu" aria-label="Explore courses">
+          <span class="menu-label">Browse</span>
+          <a href="catalog.html" role="menuitem">All courses <span aria-hidden="true">&rsaquo;</span></a>
+          <a href="catalog.html?type=material" role="menuitem">Review materials <span aria-hidden="true">&rsaquo;</span></a>
+          <a href="catalog.html?type=quiz_pack" role="menuitem">Practice quizzes <span aria-hidden="true">&rsaquo;</span></a>
+          <hr />
+          <a href="earnings.html" role="menuitem">Refer &amp; earn</a>
+          <a href="faq.html" role="menuitem">Help &amp; FAQ</a>
+        </div>
+      </div>
+
+      <form class="nav-search" action="catalog.html" method="get" role="search">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <label class="visually-hidden" for="nav-q">Search courses</label>
+        <input type="search" id="nav-q" name="q" placeholder="Search for anything" autocomplete="off" />
+      </form>
+
+      <ul class="nav-links" role="list">
+        <li><a href="catalog.html?type=quiz_pack">Practice quizzes</a></li>
+        <li><a href="earnings.html">Refer &amp; earn</a></li>
+        <li><a href="faq.html">Help</a></li>
+      </ul>
+
+      <a class="nav-icon nav-icon--search" href="catalog.html" aria-label="Search courses">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </a>
+
+      <div id="nav-actions"></div>
+    </div>
+
     <nav class="mobile-menu" id="mobile-menu" hidden aria-label="Mobile navigation">
-      <ul>
-        <li><a href="index.html">Home</a></li>
-        <li><a href="catalog.html">Catalog</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+      <form class="mobile-search" action="catalog.html" method="get" role="search">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <label class="visually-hidden" for="mobile-q">Search courses</label>
+        <input type="search" id="mobile-q" name="q" placeholder="Search for anything" autocomplete="off" />
+      </form>
+      <div class="mobile-auth" id="mobile-auth"></div>
+      <span class="menu-label">Browse</span>
+      <ul role="list">
+        <li><a href="catalog.html">All courses</a></li>
+        <li><a href="catalog.html?type=material">Review materials</a></li>
+        <li><a href="catalog.html?type=quiz_pack">Practice quizzes</a></li>
+      </ul>
+      <span class="menu-label">More from ArchPrep PH</span>
+      <ul role="list">
+        <li><a href="earnings.html">Refer &amp; earn</a></li>
+        <li><a href="faq.html">Help &amp; FAQ</a></li>
       </ul>
     </nav>
   </header>
@@ -61,7 +108,7 @@
     </section>
 
     <section class="section--tight">
-      <div class="container quiz-shell" style="max-width:760px">
+      <div class="container quiz-shell faq-page" style="max-width:760px">
 
         <p class="eyebrow" style="margin-top:.5rem">Accounts &amp; sign-in</p>
 
@@ -92,14 +139,14 @@
         <details class="faq-item">
           <summary>What payment methods do you accept?</summary>
           <div class="faq-body">
-            <p class="mb-0">We accept <strong>GCash</strong> and <strong>QR Ph</strong> only, through a secure HitPay payment page. We do not accept credit or debit cards at this time. We never see or store your payment details — everything goes through HitPay's secure checkout.</p>
+            <p class="mb-0">We accept <strong>GCash</strong>, <strong>Maya</strong>, <strong>GrabPay</strong> and <strong>credit or debit cards</strong>, through PayMongo's secure checkout page. We never see or store your payment details — everything goes through PayMongo.</p>
           </div>
         </details>
 
         <details class="faq-item">
           <summary>How quickly does my purchase appear in my account?</summary>
           <div class="faq-body">
-            <p class="mb-0">Instantly — the moment your GCash or QR Ph payment is confirmed by HitPay, the item unlocks in <a href="my-learning.html">My Learning</a>. No waiting, no emails, no codes to enter. If something doesn't appear within a few minutes of paying, contact us.</p>
+            <p class="mb-0">Instantly — the moment your payment is confirmed by PayMongo, the item unlocks in <a href="my-learning.html">My Learning</a>. No waiting, no emails, no codes to enter. If something doesn't appear within a few minutes of paying, contact us.</p>
           </div>
         </details>
 
@@ -115,7 +162,7 @@
         <details class="faq-item">
           <summary>Where do I find my quizzes and materials after paying?</summary>
           <div class="faq-body">
-            <p class="mb-0">Everything is in <a href="my-learning.html">My Learning</a>. Log in, go to My Learning, and you'll see all your purchases. Quizzes have a <strong>Take quiz</strong> button; materials have an <strong>Open</strong> button that downloads or opens the file. No codes, no email links.</p>
+            <p class="mb-0">Everything is in <a href="my-learning.html">My Learning</a>. Log in, go to My Learning, and you'll see all your purchases. Quizzes have a <strong>Start quiz</strong> button; materials have an <strong>Open material</strong> button that downloads or opens the file. No codes, no email links.</p>
           </div>
         </details>
 
@@ -161,36 +208,66 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container footer-grid">
-      <div>
-        <p class="brand" style="color:#fff">ArchPrep PH</p>
-        <p>Affordable review materials and practice quizzes for the Philippine Architect Licensure Examination. Access unlocks instantly in your account after payment.</p>
-      </div>
-      <div>
-        <h4>Explore</h4>
-        <ul>
-          <li><a href="catalog.html">Catalog</a></li>
-          <li><a href="faq.html">FAQ</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>Account</h4>
-        <ul>
-          <li><a href="login.html">Sign in</a></li>
-          <li><a href="my-learning.html">My Learning</a></li>
-          <li><a href="earnings.html">Earnings</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>Contact</h4>
-        <ul>
-          <li><a href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
+    <div class="footer-top">
+      <div class="container footer-top-inner">
+        <p>Pay the way you already do &mdash; <span>secure checkout by PayMongo</span></p>
+        <ul class="pay-marks" role="list" aria-label="Accepted payment methods">
+          <li>GCash</li>
+          <li>Maya</li>
+          <li>GrabPay</li>
+          <li>Visa</li>
+          <li>Mastercard</li>
         </ul>
       </div>
     </div>
-    <div class="container footer-note">
-      <p class="mb-0">© <span id="footer-year"></span> ArchPrep PH. Payments handled securely by HitPay (GCash / QR Ph).</p>
-      <p class="mb-0" style="margin-top:.5rem"><a href="admin.html" style="color:#8A8678;font-size:.8rem">Admin</a></p>
+
+    <div class="container footer-main">
+      <h2 class="footer-heading">Explore ArchPrep PH</h2>
+      <div class="footer-grid">
+        <div>
+          <h3>Courses</h3>
+          <ul>
+            <li><a href="catalog.html">All courses</a></li>
+            <li><a href="catalog.html?type=material">Review materials</a></li>
+            <li><a href="catalog.html?type=quiz_pack">Practice quizzes</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Your account</h3>
+          <ul>
+            <li><a href="login.html">Log in or sign up</a></li>
+            <li><a href="my-learning.html">My learning</a></li>
+            <li><a href="account.html">Account settings</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Refer &amp; earn</h3>
+          <ul>
+            <li><a href="earnings.html">Get my referral link</a></li>
+            <li><a href="earnings.html">Earnings &amp; payouts</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Help</h3>
+          <ul>
+            <li><a href="faq.html">Help &amp; FAQ</a></li>
+            <li><a href="mailto:rehinaneel@gmail.com">Contact us</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <a class="brand brand--light" href="index.html" aria-label="ArchPrep PH home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+          </span>
+          <span>ArchPrep <span class="brand-accent">PH</span></span>
+        </a>
+        <p>&copy; <span id="footer-year"></span> ArchPrep PH &middot; Review materials &amp; practice quizzes for the Philippine Architect Licensure Exam</p>
+        <a class="footer-admin" href="admin.html">Admin</a>
+      </div>
     </div>
   </footer>
 

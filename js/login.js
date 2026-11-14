@@ -61,7 +61,7 @@ function renderEmailStep(notice = null) {
 
   const submitBtn = el('button', {
     class: 'btn btn--primary btn--block btn--lg',
-    text: 'Send me a code',
+    text: 'Continue with email',
     attrs: { type: 'submit' },
   });
   form.appendChild(submitBtn);
@@ -82,7 +82,7 @@ function renderEmailStep(notice = null) {
     } catch (err) {
       alertBox.appendChild(el('div', { class: 'alert alert--error', text: err.message || 'Could not send code. Please try again.', attrs: { role: 'alert' } }));
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Send me a code';
+      submitBtn.textContent = 'Continue with email';
     }
   });
 

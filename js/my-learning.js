@@ -8,6 +8,7 @@ import { requireSession } from './auth.js';
 import { api } from './api.js';
 import { el, setText } from './dom.js';
 import { renderLoading, renderEmpty, renderError, toast } from './states.js';
+import { buildThumb, typeLabel } from './catalog.js';
 
 // ---------------------------------------------------------------------------
 // Main init
@@ -62,6 +63,7 @@ export async function initMyLearning(container) {
     }
   }
 
+
   container.innerHTML = '';
 
   if (!materials.length && !quizzes.length) {
@@ -69,60 +71,85 @@ export async function initMyLearning(container) {
     return;
   }
 
-  if (materials.length > 0) {
-    container.appendChild(_buildSection('Materials', materials, _buildMaterialItem));
-  }
-  if (quizzes.length > 0) {
-    container.appendChild(_buildSection('Quizzes', quizzes, _buildQuizItem));
+  const grid = el('div', { class: 'learning-grid' });
+  for (const item of materials) grid.appendChild(_buildMaterialItem(item));
+  for (const item of quizzes)   grid.appendChild(_buildQuizItem(item));
+
+  const emptyFilter = el('div', {
+    class: 'state-box',
+    attrs: { hidden: '' },
+    children: [
+      el('p', { class: 'state-message', text: 'Nothing here yet.' }),
+      el('a', { class: 'btn btn--primary', text: 'Browse catalog', attrs: { href: '/catalog.html' } }),
+    ],
+  });
+
+  container.appendChild(grid);
+  container.appendChild(emptyFilter);
+
+  _wireTabs(grid, emptyFilter, { all: materials.length + quizzes.length, material: materials.length, quiz_pack: quizzes.length });
+}
+
+// ---------------------------------------------------------------------------
+// Tabs in the page header (All / Review materials / Practice quizzes)
+// ---------------------------------------------------------------------------
+function _wireTabs(grid, emptyFilter, counts) {
+  const tabs = Array.from(document.querySelectorAll('[data-learning-tab]'));
+  if (!tabs.length) return;
+
+  const labels = { all: 'All courses', material: 'Review materials', quiz_pack: 'Practice quizzes' };
+  for (const tab of tabs) {
+    const key = tab.dataset.learningTab;
+    setText(tab, `${labels[key] || key} (${counts[key] ?? 0})`);
+    tab.addEventListener('click', () => {
+      tabs.forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+      let shown = 0;
+      for (const card of grid.children) {
+        const visible = key === 'all' || card.dataset.type === key;
+        card.hidden = !visible;
+        if (visible) shown++;
+      }
+      emptyFilter.hidden = shown > 0;
+    });
   }
 }
 
 // ---------------------------------------------------------------------------
-// Section builder
+// Card shell shared by materials and quizzes
 // ---------------------------------------------------------------------------
-function _buildSection(title, items, itemBuilder) {
-  const section = el('section', { class: 'subject-group' });
-  const heading = el('h2', { text: title });
-  section.appendChild(heading);
-
-  const grid = el('div', { class: 'grid grid--3' });
-  for (const item of items) {
-    grid.appendChild(itemBuilder(item));
-  }
-  section.appendChild(grid);
-  return section;
+function _cardShell(product, type, actionEls) {
+  const body = el('div', {
+    class: 'course-body',
+    children: [
+      el('h3', { class: 'course-title', text: product.title || '' }),
+      el('p', { class: 'course-author', text: product.subject ? 'ArchPrep PH · ' + product.subject : 'ArchPrep PH' }),
+      el('div', {
+        class: 'course-meta',
+        children: [el('span', {
+          class: type === 'quiz_pack' ? 'course-badge course-badge--quiz' : 'course-badge',
+          text:  typeLabel(type),
+        })],
+      }),
+      el('div', { class: 'course-foot', children: actionEls }),
+    ],
+  });
+  return el('article', {
+    class: 'learn-card',
+    data: { type },
+    children: [buildThumb(product), body],
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Material item card
 // ---------------------------------------------------------------------------
-function _buildMaterialItem({ enrollment, product }) {
-  const card = el('article', { class: 'card' });
-
-  const badge = el('span', { class: 'subject-tag', text: product.subject || 'Material' });
-  const title = el('h3', { text: product.title });
-
-  if (product.subtitle) {
-    const sub = el('p', { class: 'desc', text: product.subtitle });
-    card.appendChild(badge);
-    card.appendChild(title);
-    card.appendChild(sub);
-  } else {
-    card.appendChild(badge);
-    card.appendChild(title);
-  }
-
+function _buildMaterialItem({ product }) {
   const openBtn = el('button', {
     class: 'btn btn--primary btn--block',
-    text: 'Open',
-    attrs: {
-      type: 'button',
-      'aria-label': 'Open ' + product.title,
-    },
+    text: 'Open material',
+    attrs: { type: 'button', 'aria-label': 'Open ' + product.title },
   });
-
-  const errMsg = el('p', {});
-  errMsg.style.cssText = 'color:var(--error);font-size:var(--fs-xs);font-weight:600;margin-top:.35rem;';
+  const errMsg = el('p', { class: 'learn-card-error', attrs: { role: 'alert' } });
 
   openBtn.addEventListener('click', async () => {
     openBtn.disabled = true;
@@ -135,44 +162,24 @@ function _buildMaterialItem({ enrollment, product }) {
       errMsg.textContent = err.message || 'Could not open this material. Please try again.';
     } finally {
       openBtn.disabled = false;
-      setText(openBtn, 'Open');
+      setText(openBtn, 'Open material');
     }
   });
 
-  const foot = el('div', { class: 'card-foot', children: [openBtn, errMsg] });
-  card.appendChild(foot);
-  return card;
+  return _cardShell(product, 'material', [openBtn, errMsg]);
 }
 
 // ---------------------------------------------------------------------------
 // Quiz item card
 // ---------------------------------------------------------------------------
 function _buildQuizItem({ enrollment, product }) {
-  const card = el('article', { class: 'card' });
-
-  const badge = el('span', { class: 'subject-tag', text: product.subject || 'Quiz' });
-  const title = el('h3', { text: product.title });
-
-  if (product.subtitle) {
-    card.appendChild(badge);
-    card.appendChild(title);
-    card.appendChild(el('p', { class: 'desc', text: product.subtitle }));
-  } else {
-    card.appendChild(badge);
-    card.appendChild(title);
-  }
-
-  const href = '/quiz.html?product_id=' + encodeURIComponent(enrollment.product_id);
   const quizLink = el('a', {
     class: 'btn btn--primary btn--block',
-    text: 'Take quiz',
+    text: 'Start quiz',
     attrs: {
-      href,
-      'aria-label': 'Take quiz for ' + product.title,
+      href: '/quiz.html?product_id=' + encodeURIComponent(enrollment.product_id),
+      'aria-label': 'Start quiz for ' + product.title,
     },
   });
-
-  const foot = el('div', { class: 'card-foot', children: [quizLink] });
-  card.appendChild(foot);
-  return card;
+  return _cardShell(product, 'quiz_pack', [quizLink]);
 }

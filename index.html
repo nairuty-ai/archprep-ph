@@ -14,8 +14,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
-
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800&display=swap" rel="stylesheet" />
   <link rel="icon"       href="assets/icons/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/styles.css" />
   <script src="config.js"></script>
@@ -23,89 +22,312 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
-  <!-- =====================================================================
-       HEADER / NAV
-       ===================================================================== -->
+  <div class="promo-bar" id="promo-bar" hidden>
+    <div class="promo-inner">
+      <p class="promo-text"><strong>New to ArchPrep PH?</strong> <span>Create a free account in 30 seconds and get your own referral link &mdash; earn &#x20B1;9 for every friend who buys.</span></p>
+      <a class="promo-cta" href="login.html">Get started</a>
+    </div>
+    <button class="promo-close" type="button" aria-label="Dismiss announcement">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+
   <header class="site-header">
     <div class="nav-inner">
-      <a class="brand" href="index.html">
+      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+
+      <a class="brand" href="index.html" aria-label="ArchPrep PH home">
         <span class="brand-mark" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-            <path d="M3 21 12 3l9 18"/>
-            <path d="M7.5 21 12 12l4.5 9"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
         </span>
-        <span>ArchPrep PH</span>
+        <span>ArchPrep <span class="brand-accent">PH</span></span>
       </a>
 
-      <nav aria-label="Primary">
-        <ul class="nav-links" role="list">
-          <li><a href="index.html" aria-current="page">Home</a></li>
-          <li><a href="catalog.html">Catalog</a></li>
-          <li><a href="faq.html">FAQ</a></li>
-        </ul>
-      </nav>
+      <div class="nav-explore">
+        <a href="catalog.html" aria-haspopup="true">Explore</a>
+        <div class="explore-menu" role="menu" aria-label="Explore courses">
+          <span class="menu-label">Browse</span>
+          <a href="catalog.html" role="menuitem">All courses <span aria-hidden="true">&rsaquo;</span></a>
+          <a href="catalog.html?type=material" role="menuitem">Review materials <span aria-hidden="true">&rsaquo;</span></a>
+          <a href="catalog.html?type=quiz_pack" role="menuitem">Practice quizzes <span aria-hidden="true">&rsaquo;</span></a>
+          <hr />
+          <a href="earnings.html" role="menuitem">Refer &amp; earn</a>
+          <a href="faq.html" role="menuitem">Help &amp; FAQ</a>
+        </div>
+      </div>
+
+      <form class="nav-search" action="catalog.html" method="get" role="search">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <label class="visually-hidden" for="nav-q">Search courses</label>
+        <input type="search" id="nav-q" name="q" placeholder="Search for anything" autocomplete="off" />
+      </form>
+
+      <ul class="nav-links" role="list">
+        <li><a href="catalog.html?type=quiz_pack">Practice quizzes</a></li>
+        <li><a href="earnings.html">Refer &amp; earn</a></li>
+        <li><a href="faq.html">Help</a></li>
+      </ul>
+
+      <a class="nav-icon nav-icon--search" href="catalog.html" aria-label="Search courses">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </a>
 
       <div id="nav-actions"></div>
-
-      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M3 6h18M3 12h18M3 18h18"/>
-        </svg>
-      </button>
     </div>
 
     <nav class="mobile-menu" id="mobile-menu" hidden aria-label="Mobile navigation">
+      <form class="mobile-search" action="catalog.html" method="get" role="search">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <label class="visually-hidden" for="mobile-q">Search courses</label>
+        <input type="search" id="mobile-q" name="q" placeholder="Search for anything" autocomplete="off" />
+      </form>
+      <div class="mobile-auth" id="mobile-auth"></div>
+      <span class="menu-label">Browse</span>
       <ul role="list">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="catalog.html">Catalog</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="catalog.html">All courses</a></li>
+        <li><a href="catalog.html?type=material">Review materials</a></li>
+        <li><a href="catalog.html?type=quiz_pack">Practice quizzes</a></li>
       </ul>
-      <a class="btn btn--primary btn--block" href="login.html">Sign in free</a>
+      <span class="menu-label">More from ArchPrep PH</span>
+      <ul role="list">
+        <li><a href="earnings.html">Refer &amp; earn</a></li>
+        <li><a href="faq.html">Help &amp; FAQ</a></li>
+      </ul>
     </nav>
   </header>
 
   <main id="main">
 
     <!-- ===================================================================
-         HERO
+         HERO BANNER
          =================================================================== -->
-    <section class="hero">
-      <div class="container">
-        <div class="hero-inner">
-          <div class="hero-content">
-            <p class="eyebrow">Architect Licensure Exam · Philippines</p>
+    <section class="hero-banner" aria-labelledby="hero-headline">
+      <div class="hero-banner-media">
+        <img src="assets/images/hero-architecture.jpg" alt="" width="1600" height="900" fetchpriority="high" />
+      </div>
+      <div class="hero-card-wrap">
+        <div class="container">
+          <div class="hero-card">
             <h1 id="hero-headline">Pass the ALE with confidence.</h1>
-            <p class="lead" id="hero-subhead">Focused review materials and practice quizzes for Filipino architecture graduates — affordable, mobile-friendly, instant access.</p>
-            <div class="hero-cta">
-              <a class="btn btn--white btn--lg" href="catalog.html">Browse catalog</a>
-              <a class="btn btn--outline btn--lg" href="login.html" style="border-color:rgba(255,255,255,.5);color:#fff">Sign in free</a>
-            </div>
-            <div class="hero-stats">
-              <div class="hero-stat">
-                <span class="hero-stat-num">GCash</span>
-                <span class="hero-stat-label">GCash &amp; Maya</span>
-              </div>
-              <div class="hero-stat">
-                <span class="hero-stat-num">Instant</span>
-                <span class="hero-stat-label">Instant Access</span>
-              </div>
-              <div class="hero-stat">
-                <span class="hero-stat-num">No Expiry</span>
-                <span class="hero-stat-label">Yours Forever</span>
-              </div>
+            <p id="hero-subhead">Focused review materials and exam-style practice quizzes for Filipino architecture graduates — affordable, mobile-friendly, and unlocked the moment you pay.</p>
+            <div class="hero-actions">
+              <a class="btn btn--primary btn--lg" href="catalog.html">Browse courses</a>
+              <a class="btn btn--outline btn--lg" href="catalog.html?type=quiz_pack">See practice quizzes</a>
             </div>
           </div>
-          <div class="hero-media-wrap">
-            <img
-              class="hero-media"
-              src="assets/images/hero-architecture.jpg"
-              alt="Architecture student reviewing plans at a bright desk"
-              width="800"
-              height="600"
-              loading="eager"
-            />
+        </div>
+      </div>
+    </section>
+
+    <div class="hero-trust-row">
+      <div class="container">
+        <ul class="hero-trust-list" role="list">
+          <li>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg>
+            Pay with GCash, Maya or GrabPay
+          </li>
+          <li>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>
+            Instant access after payment
+          </li>
+          <li>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.2 8.2a5 5 0 1 1 0 7.6L12 12 5.8 8.2a5 5 0 1 0 0 7.6L12 12z"/></svg>
+            Yours to keep — no expiry
+          </li>
+          <li>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
+            Study on phone or laptop
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         CATEGORY SHOWCASE
+         =================================================================== -->
+    <section class="section" aria-labelledby="showcase-title">
+      <div class="container showcase">
+        <div class="showcase-intro">
+          <h2 id="showcase-title">Review <em>every</em> ALE subject in one place</h2>
+          <p>ArchPrep PH helps you prepare for the board exam faster — focused reviewers and exam-style practice for each subject area.</p>
+        </div>
+        <div id="category-carousel"></div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         FEATURED COURSES
+         =================================================================== -->
+    <section class="section--tight" aria-labelledby="featured-title">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title" id="featured-title">Top picks for ALE takers</h2>
+            <p class="section-sub mb-0">Review materials and practice quizzes, ready the moment you pay.</p>
           </div>
+          <a class="text-link" href="catalog.html">
+            See all courses
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+          </a>
+        </div>
+        <div id="featured-carousel"></div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         DARK FEATURE BAND
+         =================================================================== -->
+    <section class="section" aria-labelledby="band-title">
+      <div class="container">
+        <div class="dark-band">
+          <div>
+            <h2 id="band-title">Review smarter for the Architect Licensure Exam</h2>
+            <p>Built for busy reviewees: focused materials, exam-style quizzes and instant results — all on the phone you already carry.</p>
+            <ul class="feature-list" role="list">
+              <li>
+                <span class="feature-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="m8 9 1.5 1.5L12 8M8 15l1.5 1.5L12 14M14 9h2M14 15h2"/></svg></span>
+                Exam-style practice quizzes
+              </li>
+              <li>
+                <span class="feature-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z"/></svg></span>
+                Focused review materials
+              </li>
+              <li>
+                <span class="feature-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>
+                Unlocks instantly after payment
+              </li>
+              <li>
+                <span class="feature-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></span>
+                Study on any device
+              </li>
+            </ul>
+            <div class="dark-band-cta">
+              <a class="btn btn--white btn--lg" href="catalog.html">Browse the catalog</a>
+              <small>Starting at <strong id="starting-price">&#x20B1;—</strong></small>
+            </div>
+          </div>
+          <div class="band-visual">
+            <img src="assets/images/hero-architecture.jpg" alt="Architecture graduate reviewing plans at a desk" loading="lazy" width="1600" height="900" />
+            <span class="float-chip float-chip--a">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              Unlocked in My learning
+            </span>
+            <span class="float-chip float-chip--b">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg>
+              GCash · Maya · GrabPay
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         BROWSE BY SUBJECT (tabs)
+         =================================================================== -->
+    <section class="section--tight" aria-labelledby="skills-title">
+      <div class="container">
+        <h2 class="section-title" id="skills-title">Skills to pass every part of the ALE</h2>
+        <p class="section-sub">From history and theory to structural design and professional practice — review what matters most.</p>
+        <div class="tabs" id="subject-tabs" role="tablist" aria-label="Browse by subject"></div>
+        <div id="subject-panel" role="tabpanel"></div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         PAYMENT TRUST STRIP
+         =================================================================== -->
+    <section class="trust-strip section" aria-label="Accepted payment methods">
+      <div class="container">
+        <p>Pay with the e-wallets you already use &mdash; <strong>secure checkout powered by PayMongo</strong></p>
+        <ul class="pay-marks" role="list">
+          <li>GCash</li>
+          <li>Maya</li>
+          <li>GrabPay</li>
+          <li>Visa</li>
+          <li>Mastercard</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         TESTIMONIALS
+         =================================================================== -->
+    <section class="section" aria-labelledby="quotes-title">
+      <div class="container">
+        <h2 class="section-title" id="quotes-title">Join aspiring architects reviewing with ArchPrep PH</h2>
+        <p class="section-sub">What reviewees say about studying with us.</p>
+        <div class="quote-grid">
+          <figure class="quote">
+            <span class="quote-mark"><svg width="28" height="28" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M13 7C7.5 9 4 13.5 4 19.5 4 23 6.2 25 9 25c2.6 0 4.5-2 4.5-4.5S11.7 16 9.3 16c-.5 0-1 .1-1.3.2C8.6 12.8 10.8 10.4 14 9z"/><path d="M27 7c-5.5 2-9 6.5-9 12.5 0 3.5 2.2 5.5 5 5.5 2.6 0 4.5-2 4.5-4.5S25.7 16 23.3 16c-.5 0-1 .1-1.3.2.6-3.4 2.8-5.8 6-7.2z"/></svg></span>
+            <p>The practice quizzes felt just like the real exam. The explanations helped me understand why I got things wrong.</p>
+            <figcaption class="quote-person">
+              <span class="avatar" aria-hidden="true">SD</span>
+              <span><strong>Review user</strong><span>Structural Design</span></span>
+            </figcaption>
+            <div class="quote-link"><a class="text-link" href="catalog.html?type=quiz_pack">See practice quizzes <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a></div>
+          </figure>
+          <figure class="quote">
+            <span class="quote-mark"><svg width="28" height="28" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M13 7C7.5 9 4 13.5 4 19.5 4 23 6.2 25 9 25c2.6 0 4.5-2 4.5-4.5S11.7 16 9.3 16c-.5 0-1 .1-1.3.2C8.6 12.8 10.8 10.4 14 9z"/><path d="M27 7c-5.5 2-9 6.5-9 12.5 0 3.5 2.2 5.5 5 5.5 2.6 0 4.5-2 4.5-4.5S25.7 16 23.3 16c-.5 0-1 .1-1.3.2.6-3.4 2.8-5.8 6-7.2z"/></svg></span>
+            <p>Affordable and straight to the point. I could review on my phone during my commute.</p>
+            <figcaption class="quote-person">
+              <span class="avatar" aria-hidden="true">HT</span>
+              <span><strong>Review user</strong><span>History &amp; Theory</span></span>
+            </figcaption>
+            <div class="quote-link"><a class="text-link" href="catalog.html?type=material">See review materials <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a></div>
+          </figure>
+          <figure class="quote">
+            <span class="quote-mark"><svg width="28" height="28" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M13 7C7.5 9 4 13.5 4 19.5 4 23 6.2 25 9 25c2.6 0 4.5-2 4.5-4.5S11.7 16 9.3 16c-.5 0-1 .1-1.3.2C8.6 12.8 10.8 10.4 14 9z"/><path d="M27 7c-5.5 2-9 6.5-9 12.5 0 3.5 2.2 5.5 5 5.5 2.6 0 4.5-2 4.5-4.5S25.7 16 23.3 16c-.5 0-1 .1-1.3.2.6-3.4 2.8-5.8 6-7.2z"/></svg></span>
+            <p>Paid with GCash and it was in my account immediately. Really convenient.</p>
+            <figcaption class="quote-person">
+              <span class="avatar" aria-hidden="true">QB</span>
+              <span><strong>Review user</strong><span>Practice quiz bundle</span></span>
+            </figcaption>
+            <div class="quote-link"><a class="text-link" href="catalog.html">Browse all courses <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a></div>
+          </figure>
+        </div>
+        <p class="muted" style="margin-top:1rem;font-size:var(--fs-xs)">Sample testimonials shown for layout. Replace with real feedback once collected.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         REFER & EARN BAND
+         =================================================================== -->
+    <section class="refer-band" aria-labelledby="refer-title">
+      <div class="container refer-band-inner">
+        <div>
+          <h2 id="refer-title">Refer friends. Earn real cash.</h2>
+          <p>Every account gets a personal referral link. When a friend buys any course with it, you earn &#x20B1;9 — cash out to GCash once you reach &#x20B1;100.</p>
+          <a class="text-link" href="earnings.html">
+            Get my referral link
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+          </a>
+        </div>
+        <div class="refer-cards">
+          <article class="refer-card tone-0">
+            <div class="refer-card-top">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
+            </div>
+            <div class="refer-card-body">
+              <h3>Share your link</h3>
+              <p>Copy your personal link from Earnings and send it to classmates and review groups.</p>
+            </div>
+          </article>
+          <article class="refer-card tone-1">
+            <div class="refer-card-top"><strong>&#x20B1;9</strong></div>
+            <div class="refer-card-body">
+              <h3>Earn on every purchase</h3>
+              <p>Each time a friend buys with your link, &#x20B1;9 is added to your balance.</p>
+            </div>
+          </article>
+          <article class="refer-card tone-3">
+            <div class="refer-card-top"><strong>&#x20B1;100</strong></div>
+            <div class="refer-card-body">
+              <h3>Cash out via GCash</h3>
+              <p>Request a payout to your GCash number once your balance reaches &#x20B1;100.</p>
+            </div>
+          </article>
         </div>
       </div>
     </section>
@@ -113,169 +335,146 @@
     <!-- ===================================================================
          HOW IT WORKS
          =================================================================== -->
-    <section class="section--tight">
+    <section class="section" aria-labelledby="steps-title">
       <div class="container">
-        <p class="eyebrow center">How it works</p>
-        <h2 class="center">Three steps to your review</h2>
-        <div class="steps" style="margin-top:1.5rem">
-          <div class="step">
-            <span class="step-num" aria-hidden="true">1</span>
-            <h3>Create a free account</h3>
-            <p class="mb-0">Enter your email and a 6-digit code. No password, no card — your account is ready in seconds.</p>
-          </div>
-          <div class="step">
-            <span class="step-num" aria-hidden="true">2</span>
-            <h3>Pay with GCash or QR Ph</h3>
-            <p class="mb-0">Choose a material or quiz pack, tap Buy, and pay securely through PayMongo — GCash, Maya, GrabPay, or card.</p>
-          </div>
-          <div class="step">
-            <span class="step-num" aria-hidden="true">3</span>
-            <h3>Access instantly in your account</h3>
-            <p class="mb-0">The moment your payment clears, your purchase unlocks in My Learning. Open it any time on any device — no codes, no emails.</p>
-          </div>
+        <h2 class="section-title" id="steps-title">Ready to start reviewing?</h2>
+        <p class="section-sub">Three steps from sign-up to studying — no passwords, no access codes, no waiting for emails.</p>
+        <div class="step-cards">
+          <article class="step-card tone-0">
+            <div class="step-card-art">
+              <span class="step-num-big" aria-hidden="true">01</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+            </div>
+            <div class="step-card-body">
+              <h3>Create a free account</h3>
+              <p>Enter your email and the 6-digit code we send you. No password, no card needed.</p>
+              <div class="step-card-meta"><span class="pill">About 30 seconds</span><span class="pill">Free</span></div>
+            </div>
+          </article>
+          <article class="step-card tone-2">
+            <div class="step-card-art">
+              <span class="step-num-big" aria-hidden="true">02</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg>
+            </div>
+            <div class="step-card-body">
+              <h3>Pay with GCash, Maya or card</h3>
+              <p>Choose a course, tap Buy now and pay through PayMongo's secure checkout.</p>
+              <div class="step-card-meta"><span class="pill">GCash</span><span class="pill">Maya</span><span class="pill">GrabPay</span><span class="pill">Card</span></div>
+            </div>
+          </article>
+          <article class="step-card tone-1">
+            <div class="step-card-art">
+              <span class="step-num-big" aria-hidden="true">03</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>
+            </div>
+            <div class="step-card-body">
+              <h3>Start studying instantly</h3>
+              <p>Your purchase unlocks in My learning the moment payment clears — open it on any device.</p>
+              <div class="step-card-meta"><span class="pill">Instant access</span><span class="pill">No expiry</span></div>
+            </div>
+          </article>
         </div>
-      </div>
-    </section>
-
-    <!-- ===================================================================
-         FEATURED MATERIALS
-         =================================================================== -->
-    <section class="section--tight">
-      <div class="container">
-        <div class="section-header">
-          <h2 class="mb-0">Review materials</h2>
-          <a class="btn btn--ghost" href="catalog.html">See all &rarr;</a>
-        </div>
-        <div id="materials-preview"></div>
-      </div>
-    </section>
-
-    <!-- ===================================================================
-         FEATURED QUIZZES
-         =================================================================== -->
-    <section class="section--tight">
-      <div class="container">
-        <div class="section-header">
-          <h2 class="mb-0">Practice quizzes</h2>
-          <a class="btn btn--ghost" href="catalog.html">See all &rarr;</a>
-        </div>
-        <div id="quizzes-preview"></div>
-      </div>
-    </section>
-
-    <!-- ===================================================================
-         TESTIMONIALS
-         =================================================================== -->
-    <section class="section">
-      <div class="container">
-        <p class="eyebrow center">What reviewers say</p>
-        <h2 class="center">Trusted by aspiring architects</h2>
-        <div class="grid grid--3" style="margin-top:1.5rem">
-          <div class="quote">
-            <p>"The practice quizzes felt just like the real exam. The explanations helped me understand why I got things wrong."</p>
-            <cite>Review user, Structural Design</cite>
-          </div>
-          <div class="quote">
-            <p>"Affordable and straight to the point. I could review on my phone during my commute."</p>
-            <cite>Review user, History &amp; Theory</cite>
-          </div>
-          <div class="quote">
-            <p>"Paid with GCash and it was in my account immediately. Really convenient."</p>
-            <cite>Review user, Practice quiz bundle</cite>
-          </div>
-        </div>
-        <p class="muted center" style="margin-top:1rem;font-size:var(--fs-xs)">Sample testimonials shown for layout. Replace with real feedback once collected.</p>
-      </div>
-    </section>
-
-    <!-- ===================================================================
-         REFERRAL CTA
-         =================================================================== -->
-    <section class="section--tight">
-      <div class="container">
-        <div class="card center" style="border-color:var(--secondary);background:linear-gradient(135deg,#EAF0F2,#fff)">
-          <p class="eyebrow" style="color:var(--secondary)">Refer &amp; earn</p>
-          <h2>Refer a friend, earn &#x20B1;9</h2>
-          <p class="lead" style="margin-inline:auto">Sign in to get your personal referral link. Every friend who buys earns you a &#x20B1;9 reward — cash out via GCash when you reach &#x20B1;100.</p>
-          <p class="mb-0"><a class="btn btn--secondary btn--lg" href="login.html">Get my referral link</a></p>
-        </div>
+        <p style="margin:1.5rem 0 0">
+          <a class="text-link" href="login.html">
+            Create my free account
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+          </a>
+        </p>
       </div>
     </section>
 
     <!-- ===================================================================
          FAQ TEASER
          =================================================================== -->
-    <section class="section--tight">
-      <div class="container center">
-        <h2>Have a question?</h2>
-        <p class="lead" style="margin-inline:auto">Learn how payments, account access, and quizzes work.</p>
-        <a class="btn btn--outline btn--lg" href="faq.html">Read the FAQ</a>
+    <section class="section--tight" aria-labelledby="faq-title">
+      <div class="container faq-teaser">
+        <div>
+          <h2 class="section-title" id="faq-title">Questions? We've got answers</h2>
+          <p class="muted">How payments, account access, quizzes and referral rewards work.</p>
+          <a class="btn btn--dark" href="faq.html">Visit Help &amp; FAQ</a>
+        </div>
+        <ul class="faq-teaser-links" role="list">
+          <li><a href="faq.html">Do I need an account to buy? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a></li>
+          <li><a href="faq.html">How do I sign in without a password? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a></li>
+          <li><a href="faq.html">What payment methods do you accept? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a></li>
+          <li><a href="faq.html">How fast do I get access? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a></li>
+          <li><a href="faq.html">How does the referral reward work? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a></li>
+          <li><a href="faq.html">How do I cash out my earnings? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a></li>
+        </ul>
       </div>
     </section>
 
   </main>
 
-  <!-- =====================================================================
-       FOOTER
-       ===================================================================== -->
   <footer class="site-footer">
-    <div class="container footer-grid">
-      <div class="footer-brand">
-        <a class="brand" href="index.html" style="color:#fff;margin-bottom:.75rem">
-          <span class="brand-mark" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-              <path d="M3 21 12 3l9 18"/>
-              <path d="M7.5 21 12 12l4.5 9"/>
-            </svg>
-          </span>
-          <span>ArchPrep PH</span>
-        </a>
-        <p>Affordable review materials and practice quizzes for the Philippine Architect Licensure Examination. Access unlocks instantly in your account after payment.</p>
-      </div>
-      <div>
-        <h4>Explore</h4>
-        <ul>
-          <li><a href="catalog.html">Catalog</a></li>
-          <li><a href="faq.html">FAQ</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>Account</h4>
-        <ul>
-          <li><a href="login.html">Sign in</a></li>
-          <li><a href="my-learning.html">My Learning</a></li>
-          <li><a href="earnings.html">Earnings</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>Contact</h4>
-        <ul>
-          <li><a href="mailto:rehinaneel@gmail.com">rehinaneel@gmail.com</a></li>
+    <div class="footer-top">
+      <div class="container footer-top-inner">
+        <p>Pay the way you already do &mdash; <span>secure checkout by PayMongo</span></p>
+        <ul class="pay-marks" role="list" aria-label="Accepted payment methods">
+          <li>GCash</li>
+          <li>Maya</li>
+          <li>GrabPay</li>
+          <li>Visa</li>
+          <li>Mastercard</li>
         </ul>
       </div>
     </div>
-    <div class="container footer-note">
-      <p class="mb-0">&copy; <span id="footer-year"></span> ArchPrep PH. Payments handled securely by PayMongo.</p>
-      <p class="mb-0"><a href="admin.html" style="color:#8A8678;font-size:.8rem">Admin</a></p>
+
+    <div class="container footer-main">
+      <h2 class="footer-heading">Explore ArchPrep PH</h2>
+      <div class="footer-grid">
+        <div>
+          <h3>Courses</h3>
+          <ul>
+            <li><a href="catalog.html">All courses</a></li>
+            <li><a href="catalog.html?type=material">Review materials</a></li>
+            <li><a href="catalog.html?type=quiz_pack">Practice quizzes</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Your account</h3>
+          <ul>
+            <li><a href="login.html">Log in or sign up</a></li>
+            <li><a href="my-learning.html">My learning</a></li>
+            <li><a href="account.html">Account settings</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Refer &amp; earn</h3>
+          <ul>
+            <li><a href="earnings.html">Get my referral link</a></li>
+            <li><a href="earnings.html">Earnings &amp; payouts</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Help</h3>
+          <ul>
+            <li><a href="faq.html">Help &amp; FAQ</a></li>
+            <li><a href="mailto:rehinaneel@gmail.com">Contact us</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <a class="brand brand--light" href="index.html" aria-label="ArchPrep PH home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M3 21 12 3l9 18"/><path d="M7.5 21 12 12l4.5 9"/></svg>
+          </span>
+          <span>ArchPrep <span class="brand-accent">PH</span></span>
+        </a>
+        <p>&copy; <span id="footer-year"></span> ArchPrep PH &middot; Review materials &amp; practice quizzes for the Philippine Architect Licensure Exam</p>
+        <a class="footer-admin" href="admin.html">Admin</a>
+      </div>
     </div>
   </footer>
 
-  <script>document.getElementById('footer-year').textContent = new Date().getFullYear();</script>
-
   <script type="module">
-    import { initNav }             from './js/auth.js';
-    import { initFeaturedCatalog } from './js/catalog.js';
-    import { api }                 from './js/api.js';
-
-    api.getSettings().then((s) => {
-      if (s.hero_headline) document.getElementById('hero-headline').textContent = s.hero_headline;
-      if (s.hero_subhead)  document.getElementById('hero-subhead').textContent  = s.hero_subhead;
-    });
-
-    initFeaturedCatalog(document.getElementById('materials-preview'), 4, 'material');
-    initFeaturedCatalog(document.getElementById('quizzes-preview'),   4, 'quiz_pack');
-
+    import { initNav }  from './js/auth.js';
+    import { initHome } from './js/home.js';
     initNav();
+    initHome();
   </script>
 </body>
 </html>

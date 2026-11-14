@@ -89,17 +89,15 @@ export async function requireAdmin() {
 // Shared nav shell
 // ---------------------------------------------------------------------------
 
-const NAV_LINKS = [
-  { href: '/index.html',       label: 'Home' },
-  { href: '/catalog.html',     label: 'Catalog' },
-  { href: '/faq.html',         label: 'FAQ' },
-];
+const PROMO_KEY   = 'archprep_promo_dismissed';
+const SESSION_KEY = 'archprep-session'; // storageKey in supabase.js
+
+let navSubscribed = false;
+let outsideClickBound = false;
 
 /**
- * Render the top navigation bar, including the user chip / login button.
- * Call this in every page — it is idempotent.
- *
- * The nav is already in the HTML; this function just wires up the dynamic parts.
+ * Render the dynamic parts of the header (account menu / login buttons,
+ * mobile menu auth block, promo bar). Call once per page.
  */
 export async function initNav() {
   // Capture referral code from URL on every page load (Requirement 22.1–22.3).
@@ -107,89 +105,191 @@ export async function initNav() {
   captureRef();
 
   const session = await getSession();
-  const user    = session?.user ?? null;
+  await renderNavActions(session?.user ?? null);
 
-  await renderNavActions(user);
+  // Keep the header in sync with sign-in / sign-out in this or other tabs.
+  if (!navSubscribed) {
+    navSubscribed = true;
+    supabase.auth.onAuthStateChange((event, newSession) => {
+      if (event === 'TOKEN_REFRESHED') return;
+      renderNavActions(newSession?.user ?? null);
+    });
+  }
+}
 
-  // Subscribe to auth state changes so the nav updates instantly on sign-in/out
-  // without needing a page refresh.
-  supabase.auth.onAuthStateChange((event, newSession) => {
-    renderNavActions(newSession?.user ?? null);
-  });
+function initialsOf(name) {
+  const parts = String(name || '').trim().split(/[\s._-]+/).filter(Boolean);
+  if (!parts.length) return 'A';
+  const first = parts[0].charAt(0);
+  const second = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+  return (first + second).toUpperCase();
 }
 
 async function renderNavActions(user) {
-  // Fetch profile for display_name if logged in.
   let displayName = null;
+  let isAdmin = false;
   if (user) {
     const { data } = await supabase
       .from('profiles')
       .select('display_name,is_admin')
       .eq('id', user.id)
       .single();
-    displayName = data?.display_name || user.email?.split('@')[0] || 'My Account';
+    displayName = data?.display_name || user.email?.split('@')[0] || 'My account';
+    isAdmin = !!data?.is_admin;
     // Stash is_admin in sessionStorage so admin.html can check it quickly.
-    if (data?.is_admin) sessionStorage.setItem('is_admin', '1');
+    if (isAdmin) sessionStorage.setItem('is_admin', '1');
     else sessionStorage.removeItem('is_admin');
   }
 
+  updatePromo(!!user);
+
   const navActions = $('#nav-actions') || $('#nav-end');
-  if (!navActions) return;
-
-  navActions.innerHTML = '';
-
-  if (user) {
-    // Account menu chip (Requirement 31.1).
-    const menu = el('div', { class: 'account-menu', attrs: { style: 'position:relative' } });
-    const btn  = el('button', {
-      class: 'account-chip',
-      text:  displayName,
-      attrs: { 'aria-expanded': 'false', 'aria-haspopup': 'true' },
-    });
-    const dropdown = el('ul', {
-      class: 'account-dropdown',
-      attrs: { role: 'menu', hidden: '' },
-      children: [
-        menuItem('📚 My Learning',   '/my-learning.html'),
-        menuItem('💰 Earnings',      '/earnings.html'),
-        menuItem('⚙️ Account',       '/account.html'),
-        menuSep(),
-        menuItem('🚪 Sign out',      null, () => signOut()),
-      ],
-    });
-
-    btn.addEventListener('click', () => {
-      const open = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', String(!open));
-      dropdown.hidden = open;
-    });
-
-    // Close on outside click.
-    document.addEventListener('click', (e) => {
-      if (!menu.contains(e.target)) {
-        btn.setAttribute('aria-expanded', 'false');
-        dropdown.hidden = true;
-      }
-    });
-
-    menu.appendChild(btn);
-    menu.appendChild(dropdown);
-    navActions.appendChild(menu);
-  } else {
-    // Login + Sign up buttons when logged out.
-    const loginBtn = el('a', {
-      class: 'btn btn--outline',
-      text: 'Log in',
-      attrs: { href: '/login.html' },
-    });
-    const signupBtn = el('a', {
-      class: 'btn btn--primary',
-      text: 'Sign up free',
-      attrs: { href: '/login.html' },
-    });
-    navActions.appendChild(loginBtn);
-    navActions.appendChild(signupBtn);
+  if (navActions) {
+    navActions.innerHTML = '';
+    if (user) {
+      navActions.appendChild(el('a', {
+        class: 'nav-learning',
+        text: 'My learning',
+        attrs: { href: '/my-learning.html' },
+      }));
+      navActions.appendChild(buildAccountMenu(user, displayName, isAdmin));
+    } else {
+      navActions.appendChild(el('a', {
+        class: 'btn btn--outline nav-auth-btn',
+        text: 'Log in',
+        attrs: { href: '/login.html' },
+      }));
+      navActions.appendChild(el('a', {
+        class: 'btn btn--primary nav-auth-btn',
+        text: 'Sign up',
+        attrs: { href: '/login.html' },
+      }));
+    }
   }
+
+  renderMobileAuth(user, displayName, isAdmin);
+}
+
+function buildAccountMenu(user, displayName, isAdmin) {
+  const menu = el('div', { class: 'account-menu' });
+  const btn  = el('button', {
+    class: 'avatar-btn',
+    text:  initialsOf(displayName),
+    attrs: {
+      type: 'button',
+      'aria-expanded': 'false',
+      'aria-haspopup': 'true',
+      'aria-label': 'Account menu for ' + displayName,
+    },
+  });
+
+  const head = el('a', {
+    class: 'dropdown-head',
+    attrs: { href: '/account.html', role: 'menuitem' },
+    children: [
+      el('span', { class: 'avatar', text: initialsOf(displayName), attrs: { 'aria-hidden': 'true' } }),
+      el('span', {
+        children: [
+          el('span', { class: 'dropdown-name', text: displayName }),
+          el('span', { class: 'dropdown-email', text: user.email || '' }),
+        ],
+      }),
+    ],
+  });
+
+  const items = [
+    el('li', { children: [head] }),
+    menuSep(),
+    menuItem('My learning',          '/my-learning.html'),
+    menuItem('Earnings & referrals', '/earnings.html'),
+    menuItem('Account settings',     '/account.html'),
+  ];
+  if (isAdmin) items.push(menuItem('Admin portal', '/admin.html'));
+  items.push(
+    menuSep(),
+    menuItem('Help & FAQ', '/faq.html'),
+    menuSep(),
+    menuItem('Log out', null, () => signOut()),
+  );
+
+  const dropdown = el('ul', {
+    class: 'account-dropdown',
+    attrs: { role: 'menu', hidden: '' },
+    children: items,
+  });
+
+  const close = () => {
+    btn.setAttribute('aria-expanded', 'false');
+    dropdown.hidden = true;
+  };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    dropdown.hidden = open;
+  });
+  menu.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { close(); btn.focus(); }
+  });
+
+  if (!outsideClickBound) {
+    outsideClickBound = true;
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('.account-menu').forEach((m) => {
+        if (!m.contains(e.target)) {
+          const b = m.querySelector('.avatar-btn');
+          const d = m.querySelector('.account-dropdown');
+          if (b) b.setAttribute('aria-expanded', 'false');
+          if (d) d.hidden = true;
+        }
+      });
+    });
+  }
+
+  menu.appendChild(btn);
+  menu.appendChild(dropdown);
+  return menu;
+}
+
+function renderMobileAuth(user, displayName, isAdmin) {
+  const box = $('#mobile-auth');
+  if (!box) return;
+  box.innerHTML = '';
+
+  if (!user) {
+    box.appendChild(el('a', { class: 'btn btn--primary btn--block', text: 'Sign up', attrs: { href: '/login.html' } }));
+    box.appendChild(el('a', { class: 'btn btn--outline btn--block', text: 'Log in',  attrs: { href: '/login.html' } }));
+    return;
+  }
+
+  box.appendChild(el('div', {
+    class: 'mobile-user',
+    children: [
+      el('span', { class: 'avatar', text: initialsOf(displayName), attrs: { 'aria-hidden': 'true' } }),
+      el('span', {
+        children: [
+          el('span', { class: 'dropdown-name', text: displayName }),
+          el('span', { class: 'dropdown-email', text: user.email || '' }),
+        ],
+      }),
+    ],
+  }));
+
+  const links = [
+    ['My learning', '/my-learning.html'],
+    ['Earnings & referrals', '/earnings.html'],
+    ['Account settings', '/account.html'],
+  ];
+  if (isAdmin) links.push(['Admin portal', '/admin.html']);
+  const ul = el('ul', { attrs: { role: 'list' } });
+  for (const [label, href] of links) {
+    ul.appendChild(el('li', { children: [el('a', { text: label, attrs: { href } })] }));
+  }
+  const out = el('button', { class: 'btn btn--outline btn--block', text: 'Log out', attrs: { type: 'button' } });
+  out.addEventListener('click', () => signOut());
+  ul.appendChild(el('li', { children: [out] }));
+  box.appendChild(ul);
 }
 
 function menuItem(label, href, onClick = null) {
@@ -201,21 +301,84 @@ function menuItem(label, href, onClick = null) {
 }
 
 function menuSep() {
-  return el('li', { attrs: { role: 'separator', 'aria-hidden': 'true', style: 'border-top:1px solid var(--border);margin:.25rem 0' } });
+  return el('li', { attrs: { role: 'separator', 'aria-hidden': 'true' } });
 }
 
 // ---------------------------------------------------------------------------
-// Mobile menu toggle (shared across all pages that include this script)
+// Promo bar (top announcement strip)
 // ---------------------------------------------------------------------------
 
-document.addEventListener('DOMContentLoaded', () => {
+function promoDismissed() {
+  try { return localStorage.getItem(PROMO_KEY) === '1'; } catch { return false; }
+}
+
+function looksSignedIn() {
+  try { return !!localStorage.getItem(SESSION_KEY); } catch { return false; }
+}
+
+function updatePromo(signedIn) {
+  const bar = $('#promo-bar');
+  if (!bar) return;
+  const suppressed = document.body.hasAttribute('data-no-promo');
+  bar.hidden = signedIn || suppressed || promoDismissed();
+}
+
+// ---------------------------------------------------------------------------
+// Static header wiring (mobile menu, promo bar, search prefill)
+// ---------------------------------------------------------------------------
+
+function wireHeader() {
+  // Mobile menu toggle.
   const toggle = $('.nav-toggle');
   const menu   = $('#mobile-menu');
   if (toggle && menu) {
     toggle.addEventListener('click', () => {
       const open = toggle.getAttribute('aria-expanded') === 'true';
       toggle.setAttribute('aria-expanded', String(!open));
+      toggle.setAttribute('aria-label', open ? 'Open menu' : 'Close menu');
       menu.hidden = open;
     });
   }
-});
+
+  // Mobile search icon opens the menu with the search box focused.
+  const searchIcon = $('.nav-icon--search');
+  if (searchIcon && toggle && menu) {
+    searchIcon.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggle.setAttribute('aria-expanded', 'true');
+      toggle.setAttribute('aria-label', 'Close menu');
+      menu.hidden = false;
+      $('#mobile-q')?.focus();
+    });
+  }
+
+  // Promo bar: show immediately for signed-out visitors (avoids a late jump),
+  // initNav() hides it again once the session is confirmed.
+  const bar = $('#promo-bar');
+  if (bar) {
+    updatePromo(looksSignedIn());
+    bar.querySelector('.promo-close')?.addEventListener('click', () => {
+      try { localStorage.setItem(PROMO_KEY, '1'); } catch { /* private mode */ }
+      bar.hidden = true;
+    });
+  }
+
+  // Keep the search box filled with the current query on the catalog page.
+  const q = new URLSearchParams(location.search).get('q');
+  if (q) {
+    const navQ = $('#nav-q');
+    const mobQ = $('#mobile-q');
+    if (navQ) navQ.value = q;
+    if (mobQ) mobQ.value = q;
+  }
+
+  // Footer year.
+  const year = $('#footer-year');
+  if (year && !year.textContent) year.textContent = String(new Date().getFullYear());
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', wireHeader);
+} else {
+  wireHeader();
+}

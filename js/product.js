@@ -1,24 +1,18 @@
-/* js/product.js — product detail page logic.
+/* js/product.js — product (course) detail page.
  *
- * Reads ?slug from URL, fetches product, renders detail page,
- * handles Buy / Enroll button flow.
+ * Reads ?slug from the URL, fetches the product, renders a course-landing
+ * layout (dark title band + sticky purchase card), and handles the
+ * Buy now → PayMongo checkout flow.
  */
 
-import { api, ApiError } from './api.js';
-import { getSession } from './supabase.js';
-import { el, peso, setText } from './dom.js';
-import { renderLoading, renderError, toast } from './states.js';
-import { currentRef } from './referral.js';
-
-// ---------------------------------------------------------------------------
-// Thumbnail helper (shared with catalog.js)
-// ---------------------------------------------------------------------------
-function thumbnailUrl(thumbnailPath) {
-  if (!thumbnailPath) return null;
-  if (thumbnailPath.startsWith('http')) return thumbnailPath;
-  const base = window.APP_CONFIG?.SUPABASE_URL?.replace(/\/+$/, '');
-  return `${base}/storage/v1/object/public/thumbnails/${thumbnailPath}`;
-}
+import { api, ApiError }                      from './api.js';
+import { getSession }                         from './supabase.js';
+import { el, peso, setText }                  from './dom.js';
+import { renderLoading, renderError }         from './states.js';
+import { currentRef }                         from './referral.js';
+import { buildThumb, buildCourseCard, typeLabel } from './catalog.js';
+import { buildCarousel }                      from './carousel.js';
+import { icon }                               from './icons.js';
 
 // ---------------------------------------------------------------------------
 // Main init
@@ -27,25 +21,31 @@ export async function initProduct(container) {
   const params = new URLSearchParams(location.search);
   const slug = params.get('slug');
 
+  const shell = () => {
+    container.innerHTML = '';
+    const box = el('div', { class: 'container', attrs: { style: 'padding-top:3rem;padding-bottom:3rem' } });
+    container.appendChild(box);
+    return box;
+  };
+
   if (!slug) {
-    renderError(container, 'No product specified. Please go back to the catalog.', null);
+    renderError(shell(), 'No course specified. Please go back to the catalog.', () => { location.href = '/catalog.html'; });
     return;
   }
 
-  renderLoading(container, 'Loading product…');
+  renderLoading(shell(), 'Loading course…');
 
   let product;
   try {
     product = await api.getProduct(slug);
   } catch (err) {
-    renderError(container, err.message || 'Could not load this product.', () => initProduct(container));
+    renderError(shell(), err.message || 'Could not load this course.', () => initProduct(container));
     return;
   }
 
-  // Set page title dynamically
   document.title = product.title + ' — ArchPrep PH';
 
-  // Check if user already owns this product
+  // Does the signed-in user already own this product?
   const session = await getSession();
   let alreadyOwned = false;
   if (session) {
@@ -53,11 +53,12 @@ export async function initProduct(container) {
       const enrollments = await api.getEnrollments();
       alreadyOwned = enrollments.some((e) => e.product_id === product.id);
     } catch {
-      // Non-fatal — will fall back to buy button
+      // Non-fatal — falls back to the buy button.
     }
   }
 
   _render(container, product, session, alreadyOwned);
+  _renderRelated(container, product);
 }
 
 // ---------------------------------------------------------------------------
@@ -65,130 +66,214 @@ export async function initProduct(container) {
 // ---------------------------------------------------------------------------
 function _render(container, product, session, alreadyOwned) {
   container.innerHTML = '';
+  const type = product.type || 'material';
 
-  const url = thumbnailUrl(product.thumbnail_path);
-
-  // Hero thumbnail
-  let thumbEl;
-  if (url) {
-    thumbEl = el('img', {
-      attrs: {
-        src: url,
-        alt: product.title + ' thumbnail',
-        loading: 'lazy',
-      },
-    });
-    thumbEl.style.cssText = 'width:100%;max-height:360px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border);';
-  } else {
-    thumbEl = el('div', {});
-    const initial = (product.title || '?').charAt(0).toUpperCase();
-    thumbEl.textContent = initial;
-    thumbEl.style.cssText = [
-      'width:100%;height:220px;',
-      'border-radius:var(--radius);border:1px solid var(--border);',
-      'background:var(--secondary);color:#fff;',
-      'display:flex;align-items:center;justify-content:center;',
-      'font-family:var(--font-head);font-size:5rem;font-weight:600;',
-    ].join('');
+  // ---- Title band ---------------------------------------------------------
+  const crumbs = el('nav', {
+    class: 'breadcrumb',
+    attrs: { 'aria-label': 'Breadcrumb' },
+    children: [
+      el('a', { text: 'Catalog', attrs: { href: '/catalog.html' } }),
+      el('span', { class: 'sep', text: '›', attrs: { 'aria-hidden': 'true' } }),
+      el('a', { text: type === 'quiz_pack' ? 'Practice quizzes' : 'Review materials', attrs: { href: '/catalog.html?type=' + type } }),
+    ],
+  });
+  if (product.subject) {
+    crumbs.appendChild(el('span', { class: 'sep', text: '›', attrs: { 'aria-hidden': 'true' } }));
+    crumbs.appendChild(el('a', { text: product.subject, attrs: { href: '/catalog.html?subject=' + encodeURIComponent(product.subject) } }));
   }
 
-  // Subject badge
-  const badge = el('p', { class: 'eyebrow', text: product.subject || 'General' });
+  const heroMain = el('div', { class: 'course-hero-main', children: [crumbs, el('h1', { text: product.title || '' })] });
+  if (product.subtitle) heroMain.appendChild(el('p', { class: 'course-hero-sub', text: product.subtitle }));
 
-  // Title
-  const titleEl = el('h1', { text: product.title || '' });
+  const badges = el('div', {
+    class: 'course-hero-badges',
+    children: [el('span', {
+      class: type === 'quiz_pack' ? 'course-badge course-badge--quiz' : 'course-badge',
+      text: typeLabel(type),
+    })],
+  });
+  if (alreadyOwned) badges.appendChild(el('span', { class: 'course-badge course-badge--owned', text: 'Purchased' }));
+  if (product.subject) badges.appendChild(el('span', { text: product.subject }));
+  heroMain.appendChild(badges);
 
-  // Subtitle
-  const subtitleEl = product.subtitle
-    ? el('p', { class: 'lead', text: product.subtitle })
-    : null;
+  heroMain.appendChild(el('p', {
+    class: 'course-hero-meta',
+    children: [document.createTextNode('Created by '), el('a', { text: 'ArchPrep PH', attrs: { href: '/catalog.html' } })],
+  }));
 
-  // Price
-  const priceEl = el('p', {});
-  priceEl.style.cssText = 'font-family:var(--font-head);font-size:var(--fs-xl);font-weight:600;color:var(--ink);margin:.5rem 0 0;';
-  priceEl.textContent = peso(product.price_php);
+  heroMain.appendChild(el('ul', {
+    class: 'course-hero-facts',
+    attrs: { role: 'list' },
+    children: [
+      fact('bolt', 'Instant access after payment'),
+      fact('globe', 'English'),
+      fact('device', 'Phone, tablet or laptop'),
+    ],
+  }));
 
-  // What's included
-  const includesItems = Array.isArray(product.includes) ? product.includes : [];
-  let includesSection = null;
-  if (includesItems.length > 0) {
-    const heading = el('h2', { text: "What's included" });
-    heading.style.cssText = 'font-size:var(--fs-lg);margin-top:1.5rem;margin-bottom:.75rem;';
-    const ul = el('ul', { class: 'check-list' });
-    for (const item of includesItems) {
-      ul.appendChild(el('li', { text: String(item) }));
-    }
-    includesSection = el('div', { children: [heading, ul] });
-  }
+  const hero = el('section', {
+    class: 'course-hero',
+    children: [el('div', { class: 'container course-hero-inner', children: [heroMain] })],
+  });
 
-  // Description
-  let descSection = null;
-  if (product.description) {
-    const heading = el('h2', { text: 'About this product' });
-    heading.style.cssText = 'font-size:var(--fs-lg);margin-top:1.5rem;margin-bottom:.75rem;';
-    const desc = el('p', { text: product.description });
-    desc.style.color = 'var(--ink-soft)';
-    descSection = el('div', { children: [heading, desc] });
-  }
-
-  // Action area (buy / open)
-  const actionArea = el('div', { attrs: { id: 'product-action-area' } });
-  actionArea.style.cssText = 'margin-top:1.5rem;';
+  // ---- Purchase card --------------------------------------------------------
+  const actionArea = el('div', { class: 'buy-actions', attrs: { id: 'product-action-area' } });
   _renderActionArea(actionArea, product, session, alreadyOwned);
 
-  // Trust signals
-  const trust = el('p', {});
-  trust.style.cssText = 'font-size:var(--fs-xs);color:var(--muted);margin-top:.75rem;';
-  trust.textContent = 'Secure payment via HitPay · GCash or QR Ph · Instant access in your account';
+  const includes = type === 'quiz_pack'
+    ? [['quiz', 'Exam-style practice questions'], ['chart', 'Instant scoring when you submit']]
+    : [['file', 'Focused review material'], ['book', 'Open it any time from My learning']];
+  includes.push(['bolt', 'Unlocks the moment payment clears'], ['infinity', 'No expiry — yours to keep'], ['device', 'Access on mobile and desktop']);
 
-  // Refund info
-  const refund = el('p', {});
-  refund.style.cssText = 'font-size:var(--fs-xs);color:var(--muted);margin-top:.35rem;';
-  refund.textContent = 'Contact us within 7 days if you have an issue.';
+  const buyBody = el('div', {
+    class: 'buy-card-body',
+    children: [
+      el('p', { class: 'buy-price', text: peso(product.price_php) }),
+      actionArea,
+      el('p', { class: 'buy-note', text: 'Secure checkout by PayMongo · GCash, Maya, GrabPay or card' }),
+      el('div', {
+        class: 'buy-includes',
+        children: [
+          el('h3', { text: 'This course includes:' }),
+          el('ul', {
+            class: 'icon-list',
+            attrs: { role: 'list' },
+            children: includes.map(([ic, text]) => el('li', { children: [icon(ic, 16), el('span', { text })] })),
+          }),
+        ],
+      }),
+      el('div', {
+        class: 'buy-share',
+        children: [
+          el('a', { text: 'Share & earn ₱9', attrs: { href: '/earnings.html' } }),
+          el('a', { text: 'Questions?', attrs: { href: '/faq.html' } }),
+        ],
+      }),
+    ],
+  });
 
-  // Layout: two-column on wide screens
-  const contentCol = el('div', {});
-  const children = [badge, titleEl];
-  if (subtitleEl) children.push(subtitleEl);
-  children.push(priceEl);
-  if (includesSection) children.push(includesSection);
-  if (descSection) children.push(descSection);
-  children.push(actionArea, trust, refund);
-  for (const c of children) contentCol.appendChild(c);
+  const buyCard = el('aside', {
+    class: 'buy-card',
+    attrs: { 'aria-label': 'Purchase' },
+    children: [buildThumb(product), buyBody],
+  });
 
-  const grid = el('div', {});
-  grid.style.cssText = 'display:grid;gap:2rem;align-items:start;';
-  grid.appendChild(thumbEl);
-  grid.appendChild(contentCol);
+  // ---- Main column ----------------------------------------------------------
+  const main = el('div', { class: 'course-main' });
 
-  // Apply two-column layout on wide viewports via inline style (no build step)
-  const style = document.createElement('style');
-  style.textContent = '@media(min-width:820px){#product-layout{grid-template-columns:1fr 1fr;}}';
-  document.head.appendChild(style);
-  grid.id = 'product-layout';
+  const includesItems = Array.isArray(product.includes) ? product.includes.filter(Boolean) : [];
+  if (includesItems.length) {
+    main.appendChild(el('section', {
+      class: 'learn-box',
+      children: [
+        el('h2', { text: "What's included" }),
+        el('ul', {
+          class: 'learn-list',
+          attrs: { role: 'list' },
+          children: includesItems.map((item) => el('li', { children: [icon('check', 16, 2.4), el('span', { text: String(item) })] })),
+        }),
+      ],
+    }));
+  }
 
-  container.appendChild(grid);
+  if (product.description) {
+    main.appendChild(el('section', {
+      class: 'course-section course-desc',
+      children: [el('h2', { text: 'Description' }), el('p', { text: product.description })],
+    }));
+  }
+
+  main.appendChild(el('section', {
+    class: 'course-section',
+    children: [
+      el('h2', { text: 'How access works' }),
+      el('ol', {
+        class: 'access-steps',
+        attrs: { role: 'list' },
+        children: [
+          accessStep('1', 'Sign in with your email', 'Free account, no password — we email you a 6-digit code.'),
+          accessStep('2', 'Pay securely', 'GCash, Maya, GrabPay or card through PayMongo checkout.'),
+          accessStep('3', 'Open it in My learning', type === 'quiz_pack'
+            ? 'Start the quiz right away and see your score when you submit.'
+            : 'Open your review material any time, on any device.'),
+        ],
+      }),
+    ],
+  }));
+
+  const layout = el('div', { class: 'container course-layout', children: [buyCard, main] });
+
+  container.appendChild(hero);
+  container.appendChild(layout);
+}
+
+function fact(ic, text) {
+  return el('li', { children: [icon(ic, 16), el('span', { text })] });
+}
+
+function accessStep(n, title, text) {
+  return el('li', {
+    children: [
+      el('span', { class: 'step-dot', text: n, attrs: { 'aria-hidden': 'true' } }),
+      el('div', { children: [el('strong', { text: title }), el('span', { text })] }),
+    ],
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Related courses
+// ---------------------------------------------------------------------------
+async function _renderRelated(container, product) {
+  let products;
+  try {
+    products = await api.getCatalog();
+  } catch {
+    return; // Optional section — skip quietly.
+  }
+  const others = products.filter((p) => p.id !== product.id);
+  if (!others.length) return;
+
+  const sameSubject = others.filter((p) => product.subject && p.subject === product.subject);
+  const rest = others.filter((p) => !sameSubject.includes(p));
+  const picks = [...sameSubject, ...rest].slice(0, 12);
+
+  container.appendChild(el('section', {
+    class: 'section--tight',
+    attrs: { 'aria-label': 'More courses' },
+    children: [el('div', {
+      class: 'container',
+      children: [
+        el('h2', { class: 'section-title', text: 'More courses you might like', attrs: { style: 'margin-bottom:1.25rem' } }),
+        buildCarousel(picks.map(buildCourseCard), { label: 'More courses' }),
+      ],
+    })],
+  }));
 }
 
 // ---------------------------------------------------------------------------
 // Action area
 // ---------------------------------------------------------------------------
+function _ownedLink() {
+  return el('a', {
+    class: 'btn btn--dark btn--lg btn--block',
+    text: 'Go to My learning',
+    attrs: { href: '/my-learning.html' },
+  });
+}
+
 function _renderActionArea(area, product, session, alreadyOwned) {
   area.innerHTML = '';
 
   if (alreadyOwned) {
-    const link = el('a', {
-      class: 'btn btn--secondary btn--lg',
-      text: 'Open in My Learning',
-      attrs: { href: '/my-learning.html' },
-    });
-    area.appendChild(link);
+    area.appendChild(el('p', { class: 'text-success mb-0', text: '✓ You own this course.', attrs: { style: 'font-weight:700;font-size:var(--fs-sm)' } }));
+    area.appendChild(_ownedLink());
     return;
   }
 
   const btn = el('button', {
-    class: 'btn btn--primary btn--lg',
-    text: 'Buy now — ' + peso(product.price_php),
+    class: 'btn btn--primary btn--lg btn--block',
+    text: 'Buy now',
     attrs: {
       type: 'button',
       'aria-label': 'Buy ' + product.title + ' for ' + peso(product.price_php),
@@ -196,13 +281,20 @@ function _renderActionArea(area, product, session, alreadyOwned) {
   });
   area.appendChild(btn);
 
-  const errMsg = el('p', {});
-  errMsg.style.cssText = 'color:var(--error);font-size:var(--fs-xs);font-weight:600;margin-top:.5rem;';
+  if (!session) {
+    area.appendChild(el('p', {
+      class: 'buy-note',
+      text: 'You’ll sign in with your email (free) before paying.',
+      attrs: { style: 'margin-top:0' },
+    }));
+  }
+
+  const errMsg = el('p', { class: 'buy-error', attrs: { role: 'alert' } });
   area.appendChild(errMsg);
 
   btn.addEventListener('click', async () => {
     if (!session) {
-      // Save intended product and redirect to login
+      // Save intended product and redirect to login.
       sessionStorage.setItem('pending_product_id', product.id);
       sessionStorage.setItem('login_redirect', '/product.html?slug=' + encodeURIComponent(product.slug));
       location.href = '/login.html';
@@ -221,21 +313,13 @@ function _renderActionArea(area, product, session, alreadyOwned) {
       location.href = checkout_url;
     } catch (err) {
       if (err instanceof ApiError && err.code === 'already_owned') {
-        // Replace button with "open" link
         area.innerHTML = '';
-        const notice = el('p', { text: 'You already own this product.' });
-        notice.style.cssText = 'color:var(--success);font-weight:700;margin-bottom:.5rem;';
-        const link = el('a', {
-          class: 'btn btn--secondary btn--lg',
-          text: 'Open in My Learning',
-          attrs: { href: '/my-learning.html' },
-        });
-        area.appendChild(notice);
-        area.appendChild(link);
+        area.appendChild(el('p', { class: 'text-success mb-0', text: '✓ You already own this course.', attrs: { style: 'font-weight:700;font-size:var(--fs-sm)' } }));
+        area.appendChild(_ownedLink());
       } else {
         errMsg.textContent = err.message || 'Payment could not be started. Please try again.';
         btn.disabled = false;
-        setText(btn, 'Buy now — ' + peso(product.price_php));
+        setText(btn, 'Buy now');
       }
     }
   });
