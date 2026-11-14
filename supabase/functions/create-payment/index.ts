@@ -51,8 +51,10 @@ import {
   ORDER_STATUS_PENDING,
   paymentPatch,
   productQueryUrl,
+  profileReferrerUrl,
   purchasableProduct,
   readOrderIntent,
+  referrerFrom,
   resolveSiteBaseUrl,
 } from "./orders.mjs";
 
@@ -297,10 +299,17 @@ async function handle(req: Request): Promise<Response> {
   // variable leaves nothing behind to reconcile.
   checkoutSessionTarget();
 
-  const order = await insertOrder(
-    ctx,
-    buildOrderRow({ uid, product, refCode: intent.refCode }),
-  );
+  // The browser's captured code wins; when it has none — a buyer who signed up
+  // on one device and paid on another — fall back to the referrer bound to the
+  // profile at sign-up, so the referral survives the device change.
+  let refCode = intent.refCode;
+  if (!refCode) {
+    refCode = referrerFrom(
+      await readRows(ctx, profileReferrerUrl(ctx.supabaseUrl, uid), "referrer read"),
+    );
+  }
+
+  const order = await insertOrder(ctx, buildOrderRow({ uid, product, refCode }));
 
   const payment = await requestPayment(ctx, order, product);
 

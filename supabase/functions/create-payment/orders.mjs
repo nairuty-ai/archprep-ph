@@ -189,6 +189,39 @@ export function enrollmentQueryUrl(supabaseUrl, uid, productId) {
   return `${trimmedBase(supabaseUrl)}/rest/v1/enrollments?${query.toString()}`;
 }
 
+/**
+ * URL reading the referrer bound to this buyer's profile at sign-up.
+ *
+ * The fallback for a checkout whose browser carries no `?ref=` code — a buyer
+ * who signed up on their phone and paid on a laptop has an empty localStorage
+ * but still has `profiles.referred_by`.
+ *
+ * @param {string} supabaseUrl project URL
+ * @param {string} uid verified user id
+ * @returns {string} absolute PostgREST URL
+ */
+export function profileReferrerUrl(supabaseUrl, uid) {
+  if (typeof supabaseUrl !== 'string' || supabaseUrl.trim() === '') {
+    throw new TypeError('profileReferrerUrl requires the project URL');
+  }
+  if (typeof uid !== 'string' || !UUID.test(uid)) {
+    throw new TypeError('profileReferrerUrl requires a verified uuid');
+  }
+
+  const query = new URLSearchParams({
+    select: 'referred_by',
+    id: `eq.${uid}`,
+    limit: '1',
+  });
+  return `${trimmedBase(supabaseUrl)}/rest/v1/profiles?${query.toString()}`;
+}
+
+/** The referrer code on a profiles row, or null. */
+export function referrerFrom(body) {
+  const row = firstRow(body);
+  return sanitiseRefCode(row?.referred_by);
+}
+
 /** URL inserting an order and returning the inserted row. */
 export function ordersInsertUrl(supabaseUrl) {
   if (typeof supabaseUrl !== 'string' || supabaseUrl.trim() === '') {

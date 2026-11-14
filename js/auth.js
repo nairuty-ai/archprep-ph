@@ -27,9 +27,18 @@ import { $, el } from './dom.js';
 
 /** Sign in with email OTP (step 1 of 2). */
 export async function signInWithEmail(email) {
+  // The referral code travels as sign-up metadata so handle_new_user can write
+  // it to profiles.referred_by. Browser storage alone would lose the referrer
+  // their credit whenever the buyer finishes on a different device.
+  const { currentRef } = await import('./referral.js');
+  const refCode = currentRef();
+
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      ...(refCode ? { data: { ref_code: refCode } } : {}),
+    },
   });
   if (error) throw error;
 }
