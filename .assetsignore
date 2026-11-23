@@ -1,0 +1,18 @@
+# Not part of the public website (see wrangler.jsonc)
+.git
+.gitignore
+.assetsignore
+.env*
+.kiro
+.vscode
+node_modules
+package.json
+package-lock.json
+wrangler.jsonc
+*.md
+apps-script
+supabase
+tests
+docs
+sample-data
+design_handoff_archprep_v2

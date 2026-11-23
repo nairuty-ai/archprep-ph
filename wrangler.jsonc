@@ -1,0 +1,10 @@
+// Cloudflare Workers deploy config: the site is static files served as Worker
+// assets, no build step. Everything under the repo root is uploaded except
+// what .assetsignore lists (docs, backend, tests, tooling).
+{
+  "name": "archprep-ph",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./"
+  }
+}
