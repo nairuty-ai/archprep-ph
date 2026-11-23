@@ -1,5 +1,5 @@
 /* ============================================================================
- * config.js — PUBLIC front-end configuration for ArchPrep PH (Platform v2)
+ * config.js — PUBLIC front-end configuration for ArkiPrep (Platform v2)
  * ----------------------------------------------------------------------------
  * This file is served to every visitor. It holds the Supabase project URL and
  * the Supabase anon key and nothing else (Requirement 28.2).

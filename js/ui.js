@@ -252,7 +252,7 @@ export async function getQuizListCached() {
 export async function getSettings() {
   if (_settingsCache) return _settingsCache;
   const fallback = {
-    brand_name: CONFIG.BRAND_NAME || "ArchPrep PH",
+    brand_name: CONFIG.BRAND_NAME || "ArkiPrep",
     contact_email: CONFIG.CONTACT_EMAIL_FALLBACK || "",
     announcement_banner: "",
     hero_headline: CONFIG.HERO_HEADLINE_FALLBACK || "",
@@ -367,7 +367,7 @@ export async function applyChrome() {
 
   // Brand name everywhere it's marked
   $$("[data-brand]").forEach((node) => { node.textContent = settings.brand_name; });
-  document.title = document.title.replace(/ArchPrep PH/g, settings.brand_name);
+  document.title = document.title.replace(/ArkiPrep/g, settings.brand_name);
 
   // Contact email links
   $$("[data-contact-email]").forEach((node) => {

@@ -43,7 +43,7 @@ export async function initProduct(container) {
   }
 
   // Set page title dynamically
-  document.title = product.title + ' — ArchPrep PH';
+  document.title = product.title + ' — ArkiPrep';
 
   // Check if user already owns this product
   const session = await getSession();

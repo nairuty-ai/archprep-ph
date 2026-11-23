@@ -1,4 +1,4 @@
-# ADMIN_GUIDE.md — ArchPrep PH Admin Portal
+# ADMIN_GUIDE.md — ArkiPrep Admin Portal
 
 Everything you need to manage the platform day-to-day.
 Access the admin portal at `/admin.html` — requires signing in with an admin account.

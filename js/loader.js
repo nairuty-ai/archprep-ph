@@ -20,7 +20,7 @@
         '<path d="M6 42 24 6l18 36"/>' +
         '<path class="accent" d="M15 42 24 24l9 18"/>' +
       '</svg>' +
-      '<div class="intro-word">ArchPrep PH</div>' +
+      '<div class="intro-word">ArkiPrep</div>' +
     '</div>' +
     '<div class="intro-bar"></div>';
 

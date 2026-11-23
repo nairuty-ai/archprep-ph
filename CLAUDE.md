@@ -1,4 +1,4 @@
-# ArchPrep PH
+# ArkiPrep (formerly ArchPrep PH)
 
 Business rules live in design_handoff_archprep_v2/BACKEND_RULES.md and override older specs (platform_v2_supabase_spec.md, ADMIN_GUIDE.md).
 

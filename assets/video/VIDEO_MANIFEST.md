@@ -1,4 +1,4 @@
-# Video Manifest — ArchPrep PH
+# Video Manifest — ArkiPrep
 
 **Status for v1: no video is used.** Per the build spec (Section 10.4), video is
 optional and kept out of v1 to keep the site fast and simple on mobile data.

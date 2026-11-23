@@ -1,4 +1,4 @@
-# Image Manifest — ArchPrep PH
+# Image Manifest — ArkiPrep
 
 This is the checklist of **every image the site uses**. Each image has:
 

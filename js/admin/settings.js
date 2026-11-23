@@ -113,7 +113,7 @@ function buildAnswerRevealSection(settings, section) {
 function buildBrandSection(settings, section) {
   section.appendChild(el('h3', { text: 'Brand & Contact', attrs: { style: 'margin:0 0 1rem;font-size:var(--fs-md)' } }));
 
-  const brandNameInp     = textInp(settings.brand_name, 'ArchPrep PH');
+  const brandNameInp     = textInp(settings.brand_name, 'ArkiPrep');
   const contactEmailInp  = textInp(settings.contact_email, 'hello@archprep.ph');
   const heroHeadInp      = textInp(settings.hero_headline, '');
   const heroSubInp       = textInp(settings.hero_subhead, '');

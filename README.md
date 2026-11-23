@@ -1,4 +1,4 @@
-# ArchPrep PH — ALE Review & Quiz Platform
+# ArkiPrep — ALE Review & Quiz Platform
 
 A low-cost website that sells **review materials** and **practice quizzes** to
 student architects preparing for the Philippine **Architect Licensure
@@ -84,7 +84,7 @@ These reasonable defaults were chosen where the spec allowed a choice:
 
 - **Host:** Cloudflare Pages (Netlify / GitHub Pages work too — see
   `DEPLOYMENT.md`).
-- **Brand name:** placeholder **"ArchPrep PH"**, read from `config.js` and the
+- **Brand name:** placeholder **"ArkiPrep"**, read from `config.js` and the
   Settings tab so it can be changed in one place. Pick a real name later.
 - **Unanswered quiz questions** are counted as **incorrect**, with a clear
   warning on the review screen before submitting.

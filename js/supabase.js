@@ -14,15 +14,19 @@ if (!window.APP_CONFIG?.SUPABASE_URL || !window.APP_CONFIG?.SUPABASE_ANON_KEY) {
   console.error('[supabase.js] APP_CONFIG is missing. Make sure config.js is loaded before this module.');
 }
 
+// BACKEND_RULES.md §3: never remember the user. The session lives in
+// sessionStorage, so it survives moving between pages in one tab and is gone
+// when the browser (or tab) closes; every new visit needs a new email code.
 export const supabase = createClient(
   window.APP_CONFIG.SUPABASE_URL,
   window.APP_CONFIG.SUPABASE_ANON_KEY,
   {
     auth: {
       persistSession:       true,
+      storage:              window.sessionStorage,
       autoRefreshToken:     true,
-      detectSessionInUrl:   true,
-      storageKey:           'archprep-session',
+      detectSessionInUrl:   false,
+      storageKey:           'arkiprep-session',
     },
   },
 );

@@ -80,7 +80,7 @@ async function loadQuiz(container, quizId) {
 
   // Update document title
   if (quiz?.title) {
-    document.title = quiz.title + ' — ArchPrep PH';
+    document.title = quiz.title + ' — ArkiPrep';
   }
 
   startTaking(container, quiz, questions, quizId);

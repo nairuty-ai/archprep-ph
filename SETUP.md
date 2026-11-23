@@ -1,4 +1,4 @@
-# SETUP.md — ArchPrep PH v2 Deployment Guide
+# SETUP.md — ArkiPrep v2 Deployment Guide
 
 Complete first-time setup: Supabase database, Edge Functions, HitPay payments, and Cloudflare Pages.
 Follow every step in order. You can stop and come back anytime.
@@ -56,11 +56,11 @@ open it in the editor here, copy everything, paste into a **New query**, click *
 | Step | File | What it does |
 |---|---|---|
 | 1 | `supabase/scripts/00_status.sql` | Read-only: shows which of the 12 migrations are applied |
-| 2 | `supabase/scripts/01_reset.sql` | **Wipes** all ArchPrep tables (test data only!) — skip on a brand-new project |
+| 2 | `supabase/scripts/01_reset.sql` | **Wipes** all ArkiPrep tables (test data only!) — skip on a brand-new project |
 | 3 | `supabase/scripts/02_all_migrations.sql` | All migrations (0001–0022) in one transaction — any error rolls everything back |
 | 4 | `supabase/verify-schema.sql` | Read-only: 130 security/schema checks, summary row should say `ALL CHECKS PASSED` |
 
-`02_all_migrations.sql` is generated from `supabase/migrations/0001…0012` —
+`02_all_migrations.sql` is generated from `supabase/migrations/` (all files) —
 after changing a migration, regenerate it with `bash supabase/scripts/build_all.sh`.
 
 ### 2.1 Admin accounts
@@ -109,7 +109,7 @@ For production, configure a custom SMTP so emails land in inboxes reliably.
    - **User**: `resend`
    - **Password**: your Resend API key
    - **Sender email**: `noreply@yourdomain.com` (or your Resend test address)
-   - **Sender name**: `ArchPrep PH`
+   - **Sender name**: `ArkiPrep`
 
 ### 4.2 OTP email template (optional customization)
 

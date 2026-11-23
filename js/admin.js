@@ -1,5 +1,5 @@
 /* ============================================================================
- * admin.js — ArchPrep PH admin portal controller (ES module).
+ * admin.js — ArkiPrep admin portal controller (ES module).
  *
  * Security: the admin token lives in sessionStorage and is sent ONLY in the
  * POST text/plain JSON body (never in a query string). Every admin call is
