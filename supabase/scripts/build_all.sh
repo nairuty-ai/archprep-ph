@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Concatenates migrations 0001-0012 into 02_all_migrations.sql, wrapped in one
+# Concatenates every migration (0001 onwards) into 02_all_migrations.sql, wrapped in one
 # transaction so a failure part-way leaves the database untouched. Ends with a
 # profiles backfill for accounts that signed in before the trigger existed.
 set -euo pipefail
@@ -23,17 +23,17 @@ out=02_all_migrations.sql
 -- =======================================================================
 -- Backfill: profiles for auth users created before the signup trigger
 -- =======================================================================
-insert into public.profiles (id, email, ref_code, is_admin)
-select u.id, u.email, public.gen_ref_code(),
-       exists (select 1 from public.admin_bootstrap_emails b where b.email = lower(u.email))
+insert into public.profiles (id, email, ref_code)
+select u.id, u.email, public.gen_ref_code()
   from auth.users u
 on conflict (id) do nothing;
 
 commit;
 
-select 'all 12 migrations applied' as result,
+select 'all migrations applied' as result,
        (select count(*) from public.profiles) as profiles,
-       (select count(*) from public.profiles where is_admin) as admins;
+       (select count(*) from public.profiles p
+          join public.admins a on a.email = lower(p.email)) as admins;
 SQL
 } > "$out"
 echo "wrote $(wc -l < "$out") lines to supabase/scripts/$out"

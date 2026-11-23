@@ -57,8 +57,8 @@ open it in the editor here, copy everything, paste into a **New query**, click *
 |---|---|---|
 | 1 | `supabase/scripts/00_status.sql` | Read-only: shows which of the 12 migrations are applied |
 | 2 | `supabase/scripts/01_reset.sql` | **Wipes** all ArchPrep tables (test data only!) — skip on a brand-new project |
-| 3 | `supabase/scripts/02_all_migrations.sql` | All 12 migrations in one transaction — any error rolls everything back |
-| 4 | `supabase/verify-schema.sql` | Read-only: 280 security/schema checks, should end `ALL CHECKS PASSED` |
+| 3 | `supabase/scripts/02_all_migrations.sql` | All migrations (0001–0022) in one transaction — any error rolls everything back |
+| 4 | `supabase/verify-schema.sql` | Read-only: 130 security/schema checks, summary row should say `ALL CHECKS PASSED` |
 
 `02_all_migrations.sql` is generated from `supabase/migrations/0001…0012` —
 after changing a migration, regenerate it with `bash supabase/scripts/build_all.sh`.

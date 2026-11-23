@@ -2138,16 +2138,2537 @@ grant execute on function public.refund_payment(text, numeric, text, jsonb) to s
 grant execute on function public.fail_payment(text, numeric, text, jsonb) to service_role;
 
 -- =======================================================================
+-- 0013_v2_ops.sql
+-- =======================================================================
+-- 0013_v2_ops.sql
+-- v2 foundations (BACKEND_RULES.md §0, §11, §12): the extra settings keys,
+-- small helpers the later v2 functions share, the append-only audit_log and
+-- the email outbox.
+
+-- ---------------------------------------------------------------------------
+-- Settings keys (§11). Existing rows keep their values; the brand moves from
+-- ArchPrep PH to ArkiPrep only where the old default is still in place.
+-- ---------------------------------------------------------------------------
+insert into public.settings (key, value, display_safe) values
+  ('reward_hold_days',     '0',          true),
+  ('ref_ttl_days',         '30',         true),
+  ('exam_date',            '2027-01-25', true),
+  ('quiz_attempts',        '2',          true),
+  ('session_idle_min',     '30',         true),
+  ('leaderboard_mode',     'public',     true),
+  ('bank_bdo',             '',           true),
+  ('bank_bpi',             '',           true),
+  ('bank_metrobank',       '',           true),
+  ('bank_unionbank',       '',           true),
+  ('bank_landbank',        '',           true),
+  ('bank_account_name',    'ArkiPrep',   true),
+  ('bank_sla_hours',       '24',         true),
+  ('order_ttl_online_min', '60',         true),
+  ('order_ttl_bank_h',     '48',         true)
+on conflict (key) do nothing;
+
+update public.settings set value = 'ArkiPrep', updated_at = now()
+ where key = 'brand_name' and value = 'ArchPrep PH';
+
+-- ---------------------------------------------------------------------------
+-- Helpers
+-- ---------------------------------------------------------------------------
+create or replace function public.touch_updated_at() returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end $$;
+
+-- Integer setting with a fallback when the row is missing or malformed.
+create or replace function public.setting_int(p_key text, p_default integer)
+returns integer
+language sql stable
+set search_path = public, pg_temp
+as $$
+  select coalesce(
+    (select case when btrim(value) ~ '^-?[0-9]{1,9}$' then btrim(value)::integer end
+       from public.settings where key = p_key),
+    p_default);
+$$;
+
+-- Access for exam_date products ends when the ALE day ends in Manila.
+create or replace function public.exam_date_ts() returns timestamptz
+language sql stable
+set search_path = public, pg_temp
+as $$
+  select case when btrim(value) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+              then ((btrim(value)::date + 1)::timestamp at time zone 'Asia/Manila') end
+    from public.settings where key = 'exam_date';
+$$;
+
+-- ---------------------------------------------------------------------------
+-- audit_log (§0.7): append-only for every role, the service role included.
+-- ---------------------------------------------------------------------------
+create table public.audit_log (
+  id          bigserial primary key,
+  at          timestamptz not null default now(),
+  actor_id    uuid references public.profiles(id) on delete set null,
+  actor_email text,
+  area        text not null check (area in ('payments','access','content','referrals','settings','auth','system')),
+  action      text not null,
+  target      text,
+  details     jsonb not null default '{}'::jsonb
+);
+create index audit_log_at_idx on public.audit_log (at desc);
+
+create or replace function public.audit_log_append_only() returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  raise exception 'audit_log is append-only' using errcode = '42501';
+end $$;
+
+create trigger audit_log_no_update before update or delete on public.audit_log
+  for each row execute function public.audit_log_append_only();
+create trigger audit_log_no_truncate before truncate on public.audit_log
+  for each statement execute function public.audit_log_append_only();
+
+-- p_actor null = system.
+create or replace function public.write_audit(
+  p_actor uuid, p_area text, p_action text, p_target text, p_details jsonb default '{}'::jsonb
+) returns void
+language sql
+set search_path = public, pg_temp
+as $$
+  insert into public.audit_log (actor_id, actor_email, area, action, target, details)
+  values (p_actor,
+          coalesce((select email from public.profiles where id = p_actor), 'system'),
+          p_area, p_action, p_target, coalesce(p_details, '{}'::jsonb));
+$$;
+
+-- ---------------------------------------------------------------------------
+-- outbox (§0.6, §12): emails are queued inside the money/access transaction
+-- and sent after commit by the outbox worker. E1 (login code) is sent by
+-- Supabase Auth itself; A1 is the admin alert for a new bank deposit.
+-- ---------------------------------------------------------------------------
+create table public.outbox (
+  id          uuid primary key default gen_random_uuid(),
+  template    text not null check (template ~ '^(E([2-9]|1[0-2])|A1)$'),
+  to_email    text not null,
+  payload     jsonb not null default '{}'::jsonb,
+  dedupe_key  text unique,
+  status      text not null default 'pending' check (status in ('pending','sending','sent','failed')),
+  attempts    integer not null default 0 check (attempts >= 0),
+  last_error  text,
+  send_after  timestamptz not null default now(),
+  created_at  timestamptz not null default now(),
+  sent_at     timestamptz
+);
+create index outbox_due_idx on public.outbox (send_after) where status = 'pending';
+
+create or replace function public.enqueue_email(
+  p_template text, p_to text, p_payload jsonb, p_dedupe text default null
+) returns void
+language sql
+set search_path = public, pg_temp
+as $$
+  insert into public.outbox (template, to_email, payload, dedupe_key)
+  select p_template, p_to, coalesce(p_payload, '{}'::jsonb), p_dedupe
+   where p_to is not null and btrim(p_to) <> ''
+  on conflict (dedupe_key) do nothing;
+$$;
+
+-- =======================================================================
+-- 0014_v2_catalog.sql
+-- =======================================================================
+-- 0014_v2_catalog.sql
+-- v2 catalog (BACKEND_RULES.md §1, §8):
+--   products  type material|quiz|mock|free, subject A|B|ALL, status
+--             draft|published|unpublished, access rule per product
+--   quizzes   time limit in seconds, status
+--   questions versioned (lineage_id + version), topic, subject, status,
+--             options as a plain text array and correct_index
+-- Existing rows are transformed, not dropped.
+
+-- The catalog policies read the columns replaced below; 0018 recreates them.
+drop policy if exists products_select_published     on public.products;
+drop policy if exists quizzes_select_published      on public.quizzes;
+drop policy if exists pack_quizzes_select_published on public.pack_quizzes;
+
+-- ---------------------------------------------------------------------------
+-- products
+-- ---------------------------------------------------------------------------
+alter table public.products
+  alter column type type text
+  using (case type::text when 'quiz_pack' then 'quiz' else type::text end);
+drop type public.product_type;
+alter table public.products
+  add constraint products_type_check check (type in ('material','quiz','mock','free'));
+
+update public.products set subject = case
+  when upper(coalesce(subject, '')) ~ '(^|[^A-Z])B$' then 'B'
+  when upper(coalesce(subject, '')) ~ '(^|[^A-Z])A$' then 'A'
+  else 'ALL' end;
+alter table public.products
+  alter column subject set default 'ALL',
+  alter column subject set not null,
+  add constraint products_subject_check check (subject in ('A','B','ALL'));
+
+alter table public.products drop constraint products_price_php_check;
+alter table public.products
+  add constraint products_price_php_check
+  check (price_php >= 0 and (type = 'free') = (price_php = 0));
+
+alter table public.products
+  add column status text not null default 'draft'
+    check (status in ('draft','published','unpublished')),
+  add column access_mode text,
+  add column attempts_per_purchase integer
+    check (attempts_per_purchase is null or attempts_per_purchase > 0),
+  add column material_pages integer not null default 0 check (material_pages >= 0),
+  add column updated_at timestamptz not null default now();
+
+update public.products set
+  status = case when published then 'published' else 'draft' end,
+  access_mode = case type when 'material' then 'exam_date'
+                          when 'free'     then 'unlimited'
+                          else 'attempts' end,
+  attempts_per_purchase = case when type in ('quiz','mock')
+                               then public.setting_int('quiz_attempts', 2) end;
+
+alter table public.products drop column published;
+alter table public.products
+  alter column access_mode set not null,
+  add constraint products_access_mode_check
+    check (access_mode in ('exam_date','attempts','unlimited')),
+  add constraint products_attempts_match_check
+    check ((access_mode = 'attempts') = (attempts_per_purchase is not null));
+
+create trigger products_touch before update on public.products
+  for each row execute function public.touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- quizzes
+-- ---------------------------------------------------------------------------
+alter table public.quizzes
+  add column time_limit_sec integer not null default 0 check (time_limit_sec >= 0),
+  add column status text not null default 'draft'
+    check (status in ('draft','published','archived'));
+
+update public.quizzes set
+  time_limit_sec = timer_minutes * 60,
+  status = case when published then 'published' else 'draft' end,
+  subject = case
+    when upper(coalesce(subject, '')) ~ '(^|[^A-Z])B$' then 'B'
+    when upper(coalesce(subject, '')) ~ '(^|[^A-Z])A$' then 'A'
+    else 'ALL' end;
+
+alter table public.quizzes drop column timer_minutes, drop column published;
+alter table public.quizzes
+  alter column subject set default 'ALL',
+  alter column subject set not null,
+  add constraint quizzes_subject_check check (subject in ('A','B','ALL'));
+
+-- ---------------------------------------------------------------------------
+-- questions: editing creates a new version (same lineage_id, version + 1);
+-- the old row is archived, and attempts keep pointing at the row they used.
+-- ---------------------------------------------------------------------------
+alter table public.questions
+  add column lineage_id    uuid not null default gen_random_uuid(),
+  add column version       integer not null default 1 check (version > 0),
+  add column topic         text,
+  add column subject       text check (subject in ('A','B')),
+  add column status        text not null default 'published'
+    check (status in ('draft','published','archived')),
+  add column correct_index integer;
+
+-- options were [{key, text}] with correct_key naming one key; both SET
+-- expressions read the old row, so the index is taken before options flatten.
+update public.questions q set
+  correct_index = (select o.ord - 1
+                     from jsonb_array_elements(q.options) with ordinality o(elem, ord)
+                    where jsonb_typeof(o.elem) = 'object'
+                      and o.elem->>'key' = q.correct_key
+                    limit 1),
+  options = (select coalesce(jsonb_agg(
+                      case when jsonb_typeof(o.elem) = 'object' then to_jsonb(o.elem->>'text')
+                           else o.elem end
+                      order by o.ord), '[]'::jsonb)
+               from jsonb_array_elements(q.options) with ordinality o(elem, ord))
+ where jsonb_typeof(q.options) = 'array';
+
+update public.questions
+   set correct_index = ascii(upper(correct_key)) - 65
+ where correct_index is null and correct_key ~ '^[A-Za-z]$';
+
+update public.questions set options = '[]'::jsonb where jsonb_typeof(options) <> 'array';
+update public.questions
+   set correct_index = null, status = 'draft'
+ where correct_index is null or correct_index >= jsonb_array_length(options);
+
+update public.questions q set subject = z.subject
+  from public.quizzes z
+ where z.id = q.quiz_id and z.subject in ('A','B');
+
+alter table public.questions drop column correct_key;
+alter table public.questions
+  drop constraint questions_quiz_id_question_number_key,
+  add constraint questions_options_array_check check (jsonb_typeof(options) = 'array'),
+  add constraint questions_correct_index_check
+    check (correct_index is null
+           or (correct_index >= 0 and correct_index < jsonb_array_length(options))),
+  add constraint questions_published_needs_key_check
+    check (status <> 'published' or correct_index is not null),
+  add constraint questions_lineage_version_key unique (lineage_id, version);
+
+create unique index questions_live_number_key
+  on public.questions (quiz_id, question_number) where status <> 'archived';
+
+-- =======================================================================
+-- 0015_v2_identity.sql
+-- =======================================================================
+-- 0015_v2_identity.sql
+-- v2 identity (BACKEND_RULES.md §3, §7):
+--   admins    server-side allowlist by email; replaces profiles.is_admin and
+--             admin_bootstrap_emails
+--   profiles  required mobile (PH 09XXXXXXXXX, not OTP-verified), signup
+--             completion, referral bound at signup
+--   consents  terms_refund, privacy, public_leaderboard, marketing_email
+--   sessions  one active session per account
+--   auth_events / auth_locks  OTP send and wrong-code limits
+
+-- ---------------------------------------------------------------------------
+-- admins
+-- ---------------------------------------------------------------------------
+create table public.admins (
+  email      text primary key check (email = lower(btrim(email))),
+  added_by   uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+insert into public.admins (email)
+select lower(btrim(email)) from public.admin_bootstrap_emails
+union
+select lower(btrim(email)) from public.profiles where is_admin
+on conflict (email) do nothing;
+
+create or replace function public.is_admin(p_uid uuid) returns boolean
+language sql stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.profiles p
+      join public.admins a on a.email = lower(btrim(p.email))
+     where p.id = p_uid);
+$$;
+
+-- ---------------------------------------------------------------------------
+-- profiles
+-- ---------------------------------------------------------------------------
+alter table public.profiles rename column gcash_number to mobile;
+
+update public.profiles set mobile = case
+    when regexp_replace(mobile, '[^0-9]', '', 'g') ~ '^(63|0)?9[0-9]{9}$'
+    then '0' || right(regexp_replace(mobile, '[^0-9]', '', 'g'), 10)
+  end
+ where mobile is not null;
+
+alter table public.profiles
+  add constraint profiles_mobile_check check (mobile is null or mobile ~ '^09[0-9]{9}$'),
+  add column signup_completed_at timestamptz,
+  add column referred_by_user_id uuid references public.profiles(id) on delete set null;
+
+update public.profiles p set referred_by_user_id = r.id
+  from public.profiles r
+ where r.ref_code = p.referred_by and r.id <> p.id;
+
+update public.profiles set signup_completed_at = created_at
+ where display_name is not null and btrim(display_name) <> '' and mobile is not null;
+
+alter table public.profiles drop column is_admin;
+drop table public.admin_bootstrap_emails;
+
+create or replace function public.handle_new_user() returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  insert into public.profiles (id, email, ref_code)
+  values (new.id, new.email, public.gen_ref_code())
+  on conflict (id) do nothing;
+  return new;
+end $$;
+
+create or replace function public.guard_profile_columns() returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if auth.uid() is not null and current_setting('role') <> 'service_role' then
+    if new.ref_code            is distinct from old.ref_code
+    or new.referred_by         is distinct from old.referred_by
+    or new.referred_by_user_id is distinct from old.referred_by_user_id
+    or new.signup_completed_at is distinct from old.signup_completed_at
+    or new.email               is distinct from old.email
+    or new.id                  is distinct from old.id then
+      raise exception 'protected profile column' using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- consents
+-- ---------------------------------------------------------------------------
+create table public.consents (
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  type        text not null
+              check (type in ('terms_refund','privacy','public_leaderboard','marketing_email')),
+  version     text not null,
+  accepted_at timestamptz not null default now(),
+  primary key (user_id, type, version)
+);
+
+-- ---------------------------------------------------------------------------
+-- sessions: the partial unique index is what makes "one active session" hold
+-- under concurrent logins.
+-- ---------------------------------------------------------------------------
+create table public.sessions (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references public.profiles(id) on delete cascade,
+  is_admin     boolean not null default false,
+  created_at   timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  ended_at     timestamptz,
+  ended_reason text check (ended_reason in ('logout','idle','admin','browser_closed')),
+  ua           text,
+  ip_city      text
+);
+create unique index sessions_one_active_key on public.sessions (user_id) where ended_at is null;
+create index sessions_user_idx on public.sessions (user_id, created_at desc);
+
+-- ---------------------------------------------------------------------------
+-- OTP limits
+-- ---------------------------------------------------------------------------
+create table public.auth_events (
+  id         bigserial primary key,
+  kind       text not null check (kind in ('otp_send','otp_fail')),
+  email      text not null,
+  ip         text,
+  created_at timestamptz not null default now()
+);
+create index auth_events_email_idx on public.auth_events (email, kind, created_at desc);
+create index auth_events_ip_idx    on public.auth_events (ip, kind, created_at desc);
+
+create table public.auth_locks (
+  email        text primary key,
+  locked_until timestamptz not null
+);
+
+-- =======================================================================
+-- 0016_v2_learning.sql
+-- =======================================================================
+-- 0016_v2_learning.sql
+-- v2 access and exams (BACKEND_RULES.md §2, §8):
+--   enrollments  re-buyable: one ACTIVE enrollment per (user, product),
+--                attempts allowed/used, expiry, status active|ended|revoked
+--   attempts     server-timed attempts with a question snapshot
+--   attempt_answers  autosaved answers and flags
+-- quiz_attempts rows become submitted attempts (their answers are kept as
+-- legacy_answers).
+
+-- ---------------------------------------------------------------------------
+-- enrollments
+-- ---------------------------------------------------------------------------
+alter table public.enrollments drop constraint enrollments_user_product_key;
+
+alter table public.enrollments
+  add column access_mode      text not null default 'unlimited'
+    check (access_mode in ('exam_date','attempts','unlimited','fixed')),
+  add column attempts_allowed integer check (attempts_allowed is null or attempts_allowed > 0),
+  add column attempts_used    integer not null default 0 check (attempts_used >= 0),
+  add column expires_at       timestamptz,
+  add column status           text not null default 'active'
+    check (status in ('active','ended','revoked')),
+  add column ended_at         timestamptz,
+  add column revoked_reason   text;
+
+update public.enrollments e set
+  access_mode      = p.access_mode,
+  attempts_allowed = p.attempts_per_purchase,
+  expires_at       = case when p.access_mode = 'exam_date' then public.exam_date_ts() end
+  from public.products p
+ where p.id = e.product_id;
+
+alter table public.enrollments
+  add constraint enrollments_attempts_check
+    check (attempts_allowed is null or attempts_used <= attempts_allowed),
+  add constraint enrollments_order_product_key unique (order_id, product_id);
+
+create unique index enrollments_one_active_key
+  on public.enrollments (user_id, product_id) where status = 'active';
+
+-- ---------------------------------------------------------------------------
+-- attempts
+-- ---------------------------------------------------------------------------
+create table public.attempts (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references public.profiles(id) on delete cascade,
+  quiz_id        uuid not null references public.quizzes(id) on delete cascade,
+  enrollment_id  uuid references public.enrollments(id) on delete set null,
+  attempt_no     integer not null default 1 check (attempt_no > 0),
+  status         text not null default 'in_progress' check (status in ('in_progress','submitted')),
+  question_ids   uuid[] not null default '{}',
+  started_at     timestamptz not null default now(),
+  ends_at        timestamptz,
+  submitted_at   timestamptz,
+  auto_submitted boolean not null default false,
+  score          integer check (score >= 0),
+  total          integer check (total >= 0),
+  breakdown      jsonb,
+  legacy_answers jsonb
+);
+create unique index attempts_one_open_key on public.attempts (user_id) where status = 'in_progress';
+create index attempts_user_quiz_idx on public.attempts (user_id, quiz_id, started_at desc);
+create index attempts_due_idx on public.attempts (ends_at) where status = 'in_progress';
+create index attempts_board_idx on public.attempts (quiz_id) where status = 'submitted';
+
+create table public.attempt_answers (
+  attempt_id  uuid not null references public.attempts(id) on delete cascade,
+  question_id uuid not null references public.questions(id) on delete cascade,
+  choice      integer check (choice is null or choice >= 0),
+  flagged     boolean not null default false,
+  updated_at  timestamptz not null default now(),
+  primary key (attempt_id, question_id)
+);
+
+insert into public.attempts
+  (user_id, quiz_id, status, started_at, submitted_at, score, total, legacy_answers)
+select user_id, quiz_id, 'submitted', created_at, created_at, score, total, answers
+  from public.quiz_attempts;
+
+drop table public.quiz_attempts;
+
+-- =======================================================================
+-- 0017_v2_money.sql
+-- =======================================================================
+-- 0017_v2_money.sql
+-- v2 money (BACKEND_RULES.md §4-§7, §10):
+--   orders          AP-xxxxx order_no, price snapshot, coupon, referrer,
+--                   access snapshot, method, PayMongo refs, expiry, new states
+--   payment_events  webhook dedupe by provider_event_id
+--   incidents       (was payment_incidents) + ticket numbers
+--   issues          student payment reports
+--   coupons / coupon_reservations  reserve -> use | release
+--   bank_deposits   proof uploads and review
+--   referrals       status available|redeemed|void, whole pesos
+--   balance_ledger  one balance per user = sum of rows
+--   payouts         (was payout_requests)
+-- HitPay columns are dropped: PayMongo replaces HitPay.
+
+-- The v1 payment functions read the columns replaced below; the v2 functions
+-- (0020) replace them.
+do $$
+declare r record;
+begin
+  for r in
+    select p.oid::regprocedure as sig
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('fulfil_payment', 'refund_payment', 'fail_payment')
+  loop
+    execute format('drop function %s', r.sig);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- coupons (before orders, which reference them)
+-- ---------------------------------------------------------------------------
+create table public.coupons (
+  id             uuid primary key default gen_random_uuid(),
+  code           text not null unique check (code = upper(btrim(code)) and code ~ '^[A-Z0-9_-]{3,32}$'),
+  type           text not null check (type in ('percent','fixed')),
+  value          integer not null check (value > 0 and (type <> 'percent' or value <= 100)),
+  product_ids    uuid[],   -- null = every product
+  usage_limit    integer check (usage_limit is null or usage_limit > 0),
+  used_count     integer not null default 0 check (used_count >= 0),
+  reserved_count integer not null default 0 check (reserved_count >= 0),
+  starts_at      timestamptz,
+  expires_at     timestamptz,
+  active         boolean not null default true,
+  created_by     uuid references public.profiles(id) on delete set null,
+  created_at     timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- orders
+-- ---------------------------------------------------------------------------
+create sequence public.order_no_seq start 20001;
+
+alter table public.orders add column order_no text;
+with o as (select id, row_number() over (order by created_at, id) as rn from public.orders)
+update public.orders set order_no = 'AP-' || (20000 + o.rn) from o where o.id = orders.id;
+do $$ begin perform setval('public.order_no_seq', 20001 + (select count(*) from public.orders), false); end $$;
+alter table public.orders
+  alter column order_no set default ('AP-' || nextval('public.order_no_seq')),
+  alter column order_no set not null,
+  add constraint orders_order_no_key unique (order_no);
+
+alter table public.orders alter column status drop default;
+alter table public.orders
+  alter column status type text
+  using (case status::text when 'pending' then 'awaiting_payment' else status::text end);
+drop type public.order_status;
+alter table public.orders
+  alter column status set default 'created',
+  add constraint orders_status_check check (status in (
+    'created','awaiting_payment','awaiting_proof','pending_approval',
+    'on_hold','paid','failed','expired','refunded'));
+
+alter table public.orders
+  add column price_php           integer,
+  add column discount_php        integer not null default 0 check (discount_php >= 0),
+  add column coupon_id           uuid references public.coupons(id) on delete restrict,
+  add column total_php           integer,
+  add column referrer_user_id    uuid references public.profiles(id) on delete set null,
+  add column access_snapshot     jsonb not null default '{}'::jsonb,
+  add column method              text check (method in ('gcash','maya','qrph','bank')),
+  add column provider_ref        text,
+  add column provider_payment_id text,
+  add column checkout_url        text,
+  add column expires_at          timestamptz,
+  add column terms_accepted_at   timestamptz,
+  add column refunded_at         timestamptz,
+  add column updated_at          timestamptz not null default now();
+
+update public.orders o set
+  price_php        = round(o.amount_php)::integer,
+  total_php        = round(o.amount_php)::integer,
+  provider_ref     = o.hitpay_payment_id,
+  referrer_user_id = (select r.id from public.profiles r
+                       where r.ref_code = o.ref_code and r.id <> o.user_id),
+  access_snapshot  = (select jsonb_build_object(
+                        'type', p.type, 'title', p.title, 'access_mode', p.access_mode,
+                        'attempts', p.attempts_per_purchase)
+                        from public.products p where p.id = o.product_id);
+
+alter table public.orders
+  drop column amount_php,
+  drop column hitpay_payment_id,
+  drop column hitpay_reference,
+  alter column price_php set not null,
+  alter column total_php set not null,
+  add constraint orders_amounts_check
+    check (price_php >= 0 and total_php >= 0 and total_php = price_php - discount_php);
+
+create unique index orders_provider_ref_key on public.orders (provider_ref) where provider_ref is not null;
+create unique index orders_provider_payment_id_key on public.orders (provider_payment_id)
+  where provider_payment_id is not null;
+create index orders_status_idx on public.orders (status, created_at);
+
+create trigger orders_touch before update on public.orders
+  for each row execute function public.touch_updated_at();
+
+create table public.coupon_reservations (
+  order_id   uuid primary key references public.orders(id) on delete cascade,
+  coupon_id  uuid not null references public.coupons(id) on delete restrict,
+  status     text not null default 'reserved' check (status in ('reserved','used','released')),
+  updated_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- payment_events
+-- ---------------------------------------------------------------------------
+create table public.payment_events (
+  id                uuid primary key default gen_random_uuid(),
+  provider          text not null default 'paymongo',
+  provider_event_id text not null unique,
+  type              text not null,
+  order_id          uuid references public.orders(id) on delete set null,
+  payload           jsonb not null,
+  outcome           text,
+  received_at       timestamptz not null default now(),
+  processed_at      timestamptz
+);
+create index payment_events_order_idx on public.payment_events (order_id);
+
+-- ---------------------------------------------------------------------------
+-- incidents (was payment_incidents) and issues share one INC-#### sequence
+-- ---------------------------------------------------------------------------
+create sequence public.ticket_no_seq start 401;
+
+alter table public.payment_incidents rename to incidents;
+alter table public.incidents alter column kind type text using kind::text;
+drop type public.incident_kind;
+alter table public.incidents
+  add constraint incidents_kind_check check (kind in (
+    'amount_mismatch','currency_mismatch','unmatched_payment','unmatched_refund',
+    'out_of_order_status','self_referral','duplicate_payment'));
+alter table public.incidents rename column hitpay_payment_id to provider_ref;
+alter table public.incidents
+  add column ticket_no text not null default ('INC-' || lpad(nextval('public.ticket_no_seq')::text, 4, '0')),
+  add column notes text,
+  add constraint incidents_ticket_no_key unique (ticket_no);
+
+create table public.issues (
+  id          uuid primary key default gen_random_uuid(),
+  ticket_no   text not null unique default ('INC-' || lpad(nextval('public.ticket_no_seq')::text, 4, '0')),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  order_id    uuid not null references public.orders(id) on delete cascade,
+  type        text not null check (type in ('not_unlocked','duplicate','failed_but_charged')),
+  details     text,
+  proof_path  text,
+  status      text not null default 'open' check (status in ('open','resolved','refunded','rejected')),
+  resolution  text,
+  resolved_by uuid references public.profiles(id) on delete set null,
+  resolved_at timestamptz,
+  created_at  timestamptz not null default now()
+);
+create index issues_status_idx on public.issues (status, created_at);
+
+-- ---------------------------------------------------------------------------
+-- bank_deposits
+-- ---------------------------------------------------------------------------
+create table public.bank_deposits (
+  id              uuid primary key default gen_random_uuid(),
+  order_id        uuid not null references public.orders(id) on delete cascade,
+  user_id         uuid not null references public.profiles(id) on delete cascade,
+  bank            text not null check (bank in ('bdo','bpi','metrobank','unionbank','landbank')),
+  amount_received integer not null check (amount_received > 0),
+  reference_no    text not null check (btrim(reference_no) <> ''),
+  proof_path      text not null,
+  proof_sha256    text not null check (proof_sha256 ~ '^[0-9a-f]{64}$'),
+  status          text not null default 'pending_approval'
+                  check (status in ('pending_approval','approved','rejected','superseded')),
+  reject_reason   text,
+  reviewed_by     uuid references public.profiles(id) on delete set null,
+  reviewed_at     timestamptz,
+  created_at      timestamptz not null default now()
+);
+create unique index bank_deposits_one_pending_key on public.bank_deposits (order_id)
+  where status = 'pending_approval';
+create index bank_deposits_ref_idx on public.bank_deposits (bank, reference_no);
+create index bank_deposits_sha_idx on public.bank_deposits (proof_sha256);
+
+-- ---------------------------------------------------------------------------
+-- referrals: available | redeemed | void, whole pesos
+-- ---------------------------------------------------------------------------
+alter table public.referrals alter column status drop default;
+alter table public.referrals
+  alter column status type text
+  using (case status::text when 'paid' then 'redeemed' else status::text end);
+drop type public.referral_status;
+alter table public.referrals
+  alter column status set default 'available',
+  add constraint referrals_status_check check (status in ('available','redeemed','void')),
+  alter column amount_php type integer using round(amount_php)::integer;
+alter table public.referrals rename column paid_at to redeemed_at;
+alter table public.referrals add column voided_at timestamptz;
+
+-- ---------------------------------------------------------------------------
+-- balance_ledger and payouts
+-- ---------------------------------------------------------------------------
+create table public.balance_ledger (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  amount_php integer not null check (amount_php <> 0),
+  source     text not null
+             check (source in ('referral','deposit_credit','payout','payout_reversal','adjustment')),
+  ref_id     uuid,
+  note       text,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+-- Each referral, deposit credit, payout and reversal posts at most once.
+create unique index balance_ledger_once_key on public.balance_ledger (source, ref_id)
+  where ref_id is not null;
+create index balance_ledger_user_idx on public.balance_ledger (user_id, created_at desc);
+
+create table public.payouts (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references public.profiles(id) on delete cascade,
+  amount_php   integer not null check (amount_php > 0),
+  mobile       text not null,
+  status       text not null default 'requested' check (status in ('requested','sent','reversed')),
+  gcash_ref    text,
+  requested_at timestamptz not null default now(),
+  sent_at      timestamptz,
+  handled_by   uuid references public.profiles(id) on delete set null,
+  notes        text
+);
+create index payouts_status_idx on public.payouts (status, requested_at);
+
+insert into public.payouts (id, user_id, amount_php, mobile, status, requested_at, sent_at, notes)
+select id, user_id, round(amount_php)::integer, gcash_number,
+       case status when 'paid' then 'sent' when 'rejected' then 'reversed' else 'requested' end,
+       created_at, case when status = 'paid' then handled_at end, notes
+  from public.payout_requests;
+
+create unique index payouts_one_open_key on public.payouts (user_id) where status = 'requested';
+
+-- Opening balances from v1 history.
+insert into public.balance_ledger (user_id, amount_php, source, ref_id, created_at)
+select referrer_user_id, amount_php, 'referral', id, created_at
+  from public.referrals where status in ('available','redeemed') and amount_php > 0;
+insert into public.balance_ledger (user_id, amount_php, source, ref_id, created_at)
+select user_id, -amount_php, 'payout', id, requested_at from public.payouts;
+insert into public.balance_ledger (user_id, amount_php, source, ref_id, created_at)
+select user_id, amount_php, 'payout_reversal', id, requested_at
+  from public.payouts where status = 'reversed';
+
+drop table public.payout_requests;
+
+create or replace function public.balance_of(p_uid uuid) returns integer
+language sql stable
+set search_path = public, pg_temp
+as $$
+  select coalesce(sum(amount_php), 0)::integer from public.balance_ledger where user_id = p_uid;
+$$;
+
+-- =======================================================================
+-- 0018_v2_rls.sql
+-- =======================================================================
+-- 0018_v2_rls.sql
+-- Row-Level Security for the v2 schema (BACKEND_RULES.md §13).
+-- Students read only their own rows; every write goes through an Edge
+-- Function (service role) or a security definer function. New tables get no
+-- client grant by default (0005 default privileges), so each grant below is
+-- deliberate.
+
+-- ---------------------------------------------------------------------------
+-- RLS on every new table; FORCE on the money and identity tables.
+-- ---------------------------------------------------------------------------
+alter table public.admins              enable row level security;
+alter table public.consents            enable row level security;
+alter table public.sessions            enable row level security;
+alter table public.auth_events         enable row level security;
+alter table public.auth_locks          enable row level security;
+alter table public.attempts            enable row level security;
+alter table public.attempt_answers     enable row level security;
+alter table public.coupons             enable row level security;
+alter table public.coupon_reservations enable row level security;
+alter table public.payment_events      enable row level security;
+alter table public.issues              enable row level security;
+alter table public.bank_deposits       enable row level security;
+alter table public.balance_ledger      enable row level security;
+alter table public.payouts             enable row level security;
+alter table public.audit_log           enable row level security;
+alter table public.outbox              enable row level security;
+
+alter table public.admins         force row level security;
+alter table public.sessions       force row level security;
+alter table public.bank_deposits  force row level security;
+alter table public.balance_ledger force row level security;
+alter table public.payouts        force row level security;
+alter table public.audit_log      force row level security;
+
+-- ---------------------------------------------------------------------------
+-- Catalog: published rows for everyone; a student also keeps seeing a product
+-- they hold an active enrollment for after it is unpublished (§1).
+-- material_path stays server-only.
+-- ---------------------------------------------------------------------------
+revoke select on public.products from anon, authenticated;
+grant select (
+  id, slug, type, subject, title, subtitle, description, price_php, currency,
+  thumbnail_path, includes, status, sort_order, created_at, access_mode,
+  attempts_per_purchase, material_pages, updated_at
+) on public.products to anon, authenticated;
+
+create policy products_select_published on public.products
+  for select to anon, authenticated
+  using (status = 'published');
+
+create policy products_select_enrolled on public.products
+  for select to authenticated
+  using (exists (select 1 from public.enrollments e
+                  where e.product_id = products.id
+                    and e.user_id = auth.uid()
+                    and e.status = 'active'));
+
+create policy quizzes_select_published on public.quizzes
+  for select to anon, authenticated
+  using (status = 'published');
+
+create policy pack_quizzes_select_published on public.pack_quizzes
+  for select to anon, authenticated
+  using (exists (select 1 from public.products p
+                  where p.id = pack_quizzes.product_id and p.status = 'published')
+     and exists (select 1 from public.quizzes q
+                  where q.id = pack_quizzes.quiz_id and q.status = 'published'));
+
+-- ---------------------------------------------------------------------------
+-- Profiles: the user may edit only display_name and mobile; everything else
+-- goes through complete_signup() or the admin functions.
+-- ---------------------------------------------------------------------------
+revoke update on public.profiles from authenticated;
+grant update (display_name, mobile) on public.profiles to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Owner-scoped reads
+-- ---------------------------------------------------------------------------
+grant select on public.attempts       to authenticated;
+grant select on public.consents       to authenticated;
+grant select on public.balance_ledger to authenticated;
+grant select on public.payouts        to authenticated;
+grant select on public.issues         to authenticated;
+grant select (id, user_id, is_admin, created_at, last_seen_at, ended_at, ended_reason, ua, ip_city)
+  on public.sessions to authenticated;
+grant select (id, order_id, user_id, bank, amount_received, reference_no, status,
+              reject_reason, reviewed_at, created_at)
+  on public.bank_deposits to authenticated;
+grant select (attempt_id, question_id, choice, flagged, updated_at)
+  on public.attempt_answers to authenticated;
+grant select (voided_at) on public.referrals to authenticated;
+
+create policy attempts_select_own       on public.attempts       for select to authenticated using (user_id = auth.uid());
+create policy consents_select_own       on public.consents       for select to authenticated using (user_id = auth.uid());
+create policy balance_ledger_select_own on public.balance_ledger for select to authenticated using (user_id = auth.uid());
+create policy payouts_select_own        on public.payouts        for select to authenticated using (user_id = auth.uid());
+create policy issues_select_own         on public.issues         for select to authenticated using (user_id = auth.uid());
+create policy sessions_select_own       on public.sessions       for select to authenticated using (user_id = auth.uid());
+create policy bank_deposits_select_own  on public.bank_deposits  for select to authenticated using (user_id = auth.uid());
+create policy attempt_answers_select_own on public.attempt_answers for select to authenticated
+  using (exists (select 1 from public.attempts a
+                  where a.id = attempt_answers.attempt_id and a.user_id = auth.uid()));
+
+-- admins, auth_events, auth_locks, coupons, coupon_reservations,
+-- payment_events, incidents, audit_log and outbox: no client grant, no policy.
+-- Coupons are validated by create-payment; the code list is never readable.
+
+-- =======================================================================
+-- 0019_fn_v2_identity.sql
+-- =======================================================================
+-- 0019_fn_v2_identity.sql
+-- Signup, OTP limits and the one-active-session rule (BACKEND_RULES.md §3, §7).
+-- Every function here is service-role only: Edge Functions call them after
+-- verifying the caller's token.
+
+-- ---------------------------------------------------------------------------
+-- complete_signup: first login = signup. Idempotent: a second call on a
+-- completed profile is a no-op. The referral binds here, once (first touch),
+-- and never to the user themselves, their email or their mobile.
+-- ---------------------------------------------------------------------------
+create or replace function public.complete_signup(
+  p_uid          uuid,
+  p_display_name text,
+  p_mobile       text,
+  p_consents     text[],
+  p_version      text,
+  p_ref_code     text default null
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_profile  public.profiles;
+  v_referrer public.profiles;
+  v_name     text := btrim(coalesce(p_display_name, ''));
+  v_mobile   text := regexp_replace(coalesce(p_mobile, ''), '[^0-9]', '', 'g');
+  v_type     text;
+begin
+  select * into v_profile from public.profiles where id = p_uid for update;
+  if not found then
+    raise exception 'PROFILE_NOT_FOUND';
+  end if;
+  if v_profile.signup_completed_at is not null then
+    return jsonb_build_object('ok', true, 'already', true);
+  end if;
+
+  if char_length(v_name) < 2 or char_length(v_name) > 40 then
+    raise exception 'DISPLAY_NAME_INVALID';
+  end if;
+  if v_mobile ~ '^639[0-9]{9}$' then
+    v_mobile := '0' || substr(v_mobile, 3);
+  end if;
+  if v_mobile !~ '^09[0-9]{9}$' then
+    raise exception 'MOBILE_INVALID';
+  end if;
+  if not (p_consents @> array['terms_refund','privacy','public_leaderboard']) then
+    raise exception 'CONSENT_REQUIRED';
+  end if;
+
+  update public.profiles
+     set display_name = v_name, mobile = v_mobile, signup_completed_at = now()
+   where id = p_uid;
+
+  foreach v_type in array p_consents loop
+    if v_type in ('terms_refund','privacy','public_leaderboard','marketing_email') then
+      insert into public.consents (user_id, type, version)
+      values (p_uid, v_type, coalesce(nullif(btrim(p_version), ''), 'v1'))
+      on conflict do nothing;
+    end if;
+  end loop;
+
+  if v_profile.referred_by is null and nullif(btrim(coalesce(p_ref_code, '')), '') is not null then
+    select * into v_referrer from public.profiles where ref_code = upper(btrim(p_ref_code));
+    if found
+       and v_referrer.id <> p_uid
+       and lower(v_referrer.email) <> lower(v_profile.email)
+       and v_referrer.mobile is distinct from v_mobile then
+      update public.profiles
+         set referred_by = v_referrer.ref_code, referred_by_user_id = v_referrer.id
+       where id = p_uid;
+    end if;
+  end if;
+
+  perform public.write_audit(p_uid, 'auth', 'signup', v_profile.email,
+                             jsonb_build_object('consents', p_consents));
+  return jsonb_build_object('ok', true, 'already', false);
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- OTP limits: resend after 60s, max 5 sends/hour per email and per IP,
+-- 5 wrong codes lock the email for 15 minutes.
+-- ---------------------------------------------------------------------------
+create or replace function public.otp_send_check(p_email text, p_ip text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_email  text := lower(btrim(p_email));
+  v_locked timestamptz;
+  v_last   timestamptz;
+begin
+  select locked_until into v_locked from public.auth_locks
+   where email = v_email and locked_until > now();
+  if found then
+    return jsonb_build_object('ok', false, 'reason', 'locked',
+      'retry_after_sec', ceil(extract(epoch from v_locked - now())));
+  end if;
+
+  select max(created_at) into v_last from public.auth_events
+   where email = v_email and kind = 'otp_send';
+  if v_last is not null and v_last > now() - interval '60 seconds' then
+    return jsonb_build_object('ok', false, 'reason', 'too_soon',
+      'retry_after_sec', ceil(extract(epoch from v_last + interval '60 seconds' - now())));
+  end if;
+
+  if (select count(*) from public.auth_events
+       where email = v_email and kind = 'otp_send' and created_at > now() - interval '1 hour') >= 5
+  or (p_ip is not null and
+      (select count(*) from public.auth_events
+        where ip = p_ip and kind = 'otp_send' and created_at > now() - interval '1 hour') >= 5) then
+    return jsonb_build_object('ok', false, 'reason', 'rate_limited', 'retry_after_sec', 3600);
+  end if;
+
+  insert into public.auth_events (kind, email, ip) values ('otp_send', v_email, p_ip);
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.otp_verify_allowed(p_email text) returns boolean
+language sql stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select not exists (select 1 from public.auth_locks
+                      where email = lower(btrim(p_email)) and locked_until > now());
+$$;
+
+create or replace function public.otp_record_failure(p_email text, p_ip text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_email text := lower(btrim(p_email));
+  v_fails integer;
+begin
+  insert into public.auth_events (kind, email, ip) values ('otp_fail', v_email, p_ip);
+  select count(*) into v_fails from public.auth_events
+   where email = v_email and kind = 'otp_fail' and created_at > now() - interval '15 minutes';
+  if v_fails >= 5 then
+    insert into public.auth_locks (email, locked_until)
+    values (v_email, now() + interval '15 minutes')
+    on conflict (email) do update set locked_until = excluded.locked_until;
+    return jsonb_build_object('locked', true);
+  end if;
+  return jsonb_build_object('locked', false, 'remaining', 5 - v_fails);
+end $$;
+
+create or replace function public.otp_record_success(p_email text) returns void
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  delete from public.auth_events where email = lower(btrim(p_email)) and kind = 'otp_fail';
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Sessions. Students idle out after session_idle_min (30), admins after 8h.
+-- ---------------------------------------------------------------------------
+create or replace function public.session_idle_limit(p_is_admin boolean) returns interval
+language sql stable
+set search_path = public, pg_temp
+as $$
+  select case when p_is_admin then interval '8 hours'
+              else public.setting_int('session_idle_min', 30) * interval '1 minute' end;
+$$;
+
+create or replace function public.start_session(
+  p_uid uuid, p_is_admin boolean, p_ua text, p_ip_city text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_other public.sessions;
+  v_id    uuid;
+begin
+  update public.sessions
+     set ended_at = now(), ended_reason = 'idle'
+   where user_id = p_uid and ended_at is null
+     and last_seen_at < now() - public.session_idle_limit(is_admin);
+
+  select * into v_other from public.sessions where user_id = p_uid and ended_at is null;
+  if found then
+    return jsonb_build_object('ok', false, 'code', 'SESSION_ACTIVE',
+      'other', jsonb_build_object('ua', v_other.ua, 'ip_city', v_other.ip_city,
+                                  'last_seen_at', v_other.last_seen_at,
+                                  'created_at', v_other.created_at));
+  end if;
+
+  begin
+    insert into public.sessions (user_id, is_admin, ua, ip_city)
+    values (p_uid, coalesce(p_is_admin, false), left(p_ua, 300), left(p_ip_city, 100))
+    returning id into v_id;
+  exception when unique_violation then
+    return jsonb_build_object('ok', false, 'code', 'SESSION_ACTIVE');
+  end;
+  return jsonb_build_object('ok', true, 'session_id', v_id);
+end $$;
+
+-- Heartbeat and per-request check. Returns false when the session is gone,
+-- idle or belongs to someone else; an idle session is ended on the way.
+create or replace function public.touch_session(p_uid uuid, p_session_id uuid) returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_s public.sessions;
+begin
+  select * into v_s from public.sessions
+   where id = p_session_id and user_id = p_uid and ended_at is null
+   for update;
+  if not found then
+    return false;
+  end if;
+  if v_s.last_seen_at < now() - public.session_idle_limit(v_s.is_admin) then
+    update public.sessions set ended_at = now(), ended_reason = 'idle' where id = v_s.id;
+    return false;
+  end if;
+  update public.sessions set last_seen_at = now() where id = v_s.id;
+  return true;
+end $$;
+
+-- p_actor = the user (logout) or an admin (End session: audited + email E9).
+create or replace function public.end_session(
+  p_session_id uuid, p_actor uuid, p_reason text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_s     public.sessions;
+  v_email text;
+begin
+  update public.sessions set ended_at = now(), ended_reason = p_reason
+   where id = p_session_id and ended_at is null
+  returning * into v_s;
+  if not found then
+    return jsonb_build_object('ok', true, 'noop', true);
+  end if;
+  if p_reason = 'admin' then
+    select email into v_email from public.profiles where id = v_s.user_id;
+    perform public.write_audit(p_actor, 'access', 'session_ended', v_email,
+                               jsonb_build_object('session_id', v_s.id, 'ua', v_s.ua));
+    perform public.enqueue_email('E9', v_email,
+      jsonb_build_object('name', (select display_name from public.profiles where id = v_s.user_id)),
+      'E9:' || v_s.id);
+  end if;
+  return jsonb_build_object('ok', true, 'noop', false);
+end $$;
+
+create or replace function public.end_stale_sessions() returns integer
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  with ended as (
+    update public.sessions set ended_at = now(), ended_reason = 'idle'
+     where ended_at is null and last_seen_at < now() - public.session_idle_limit(is_admin)
+    returning 1)
+  select count(*)::integer from ended;
+$$;
+
+-- =======================================================================
+-- 0020_fn_v2_orders.sql
+-- =======================================================================
+-- 0020_fn_v2_orders.sql
+-- Orders, PayMongo events, bank deposits, refunds and admin access changes
+-- (BACKEND_RULES.md §2, §4, §5, §6, §7, §10). Each function is one
+-- transaction; status guards (WHERE status = 'expected') make retries,
+-- double clicks, duplicate webhooks and two admins harmless. Errors raise a
+-- short code (ALREADY_OWNED, COUPON_UNAVAILABLE, ...) that the Edge Function
+-- maps to an HTTP response. fulfil_order is the only place that grants
+-- access for an order.
+
+-- ---------------------------------------------------------------------------
+-- Small helpers
+-- ---------------------------------------------------------------------------
+-- An active enrollment past its expiry or out of attempts no longer counts
+-- as owned; end it so the partial unique index frees up for a re-buy.
+create or replace function public.end_lapsed_enrollments(p_uid uuid, p_product_id uuid)
+returns void
+language sql
+set search_path = public, pg_temp
+as $$
+  update public.enrollments
+     set status = 'ended', ended_at = now()
+   where user_id = p_uid and product_id = p_product_id and status = 'active'
+     and ((expires_at is not null and expires_at <= now())
+       or (attempts_allowed is not null and attempts_used >= attempts_allowed));
+$$;
+
+create or replace function public.release_coupon(p_order_id uuid) returns void
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  v_coupon uuid;
+begin
+  update public.coupon_reservations
+     set status = 'released', updated_at = now()
+   where order_id = p_order_id and status = 'reserved'
+  returning coupon_id into v_coupon;
+  if found then
+    update public.coupons set reserved_count = greatest(reserved_count - 1, 0) where id = v_coupon;
+  end if;
+end $$;
+
+create or replace function public.use_coupon(p_order_id uuid) returns void
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  v_res public.coupon_reservations;
+begin
+  select * into v_res from public.coupon_reservations where order_id = p_order_id for update;
+  if not found or v_res.status = 'used' then
+    return;
+  end if;
+  update public.coupons
+     set used_count = used_count + 1,
+         reserved_count = case when v_res.status = 'reserved'
+                               then greatest(reserved_count - 1, 0) else reserved_count end
+   where id = v_res.coupon_id;
+  update public.coupon_reservations set status = 'used', updated_at = now()
+   where order_id = p_order_id;
+end $$;
+
+create or replace function public.open_incident(
+  p_kind text, p_order_id uuid, p_provider_ref text, p_reported numeric,
+  p_currency text, p_stored numeric, p_payload jsonb
+) returns text
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  v_ticket text;
+begin
+  insert into public.incidents
+    (kind, order_id, provider_ref, reported_amount, reported_currency,
+     stored_amount, stored_currency, payload)
+  values (p_kind, p_order_id, p_provider_ref,
+          case when p_reported is not null and p_reported <> 'NaN'::numeric
+                and abs(p_reported) < 10000000000 then round(p_reported, 2) end,
+          left(p_currency, 10), p_stored, case when p_stored is not null then 'PHP' end, p_payload)
+  returning ticket_no into v_ticket;
+  return v_ticket;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- create_order (§4 create-payment steps 1-5). Step 6, the PayMongo checkout,
+-- happens in the Edge Function after this commits, then attach_checkout.
+-- ---------------------------------------------------------------------------
+create or replace function public.create_order(
+  p_uid            uuid,
+  p_product_id     uuid,
+  p_method         text,
+  p_coupon_code    text,
+  p_ref_code       text,
+  p_terms_accepted boolean
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_buyer      public.profiles;
+  v_product    public.products;
+  v_coupon     public.coupons;
+  v_referrer   public.profiles;
+  v_ref_id     uuid;
+  v_discount   integer := 0;
+  v_access_exp timestamptz;
+  v_expires    timestamptz;
+  v_open       record;
+  v_order      public.orders;
+begin
+  if not coalesce(p_terms_accepted, false) then
+    raise exception 'TERMS_REQUIRED';
+  end if;
+  if p_method is null or p_method not in ('gcash','maya','qrph','bank') then
+    raise exception 'METHOD_INVALID';
+  end if;
+
+  -- Locking the buyer serialises double clicks from one account.
+  select * into v_buyer from public.profiles where id = p_uid for update;
+  if not found then
+    raise exception 'PROFILE_NOT_FOUND';
+  end if;
+  if v_buyer.signup_completed_at is null then
+    raise exception 'SIGNUP_INCOMPLETE';
+  end if;
+
+  select * into v_product from public.products where id = p_product_id and status = 'published';
+  if not found then
+    raise exception 'PRODUCT_NOT_FOUND';
+  end if;
+  if v_product.type = 'free' then
+    raise exception 'PRODUCT_IS_FREE';
+  end if;
+
+  perform public.end_lapsed_enrollments(p_uid, p_product_id);
+  if exists (select 1 from public.enrollments
+              where user_id = p_uid and product_id = p_product_id and status = 'active') then
+    raise exception 'ALREADY_OWNED';
+  end if;
+
+  if v_product.access_mode = 'exam_date' then
+    v_access_exp := public.exam_date_ts();
+    if v_access_exp is null or v_access_exp <= now() then
+      raise exception 'EXAM_DATE_NOT_SET';
+    end if;
+  end if;
+
+  -- An abandoned checkout for the same product gives its coupon back.
+  for v_open in
+    select id from public.orders
+     where user_id = p_uid and product_id = p_product_id
+       and status in ('created','awaiting_payment','awaiting_proof')
+     for update
+  loop
+    update public.orders set status = 'expired' where id = v_open.id;
+    perform public.release_coupon(v_open.id);
+  end loop;
+
+  if nullif(btrim(coalesce(p_coupon_code, '')), '') is not null then
+    select * into v_coupon from public.coupons
+     where code = upper(btrim(p_coupon_code)) for update;
+    if not found or not v_coupon.active
+       or (v_coupon.starts_at is not null and v_coupon.starts_at > now())
+       or (v_coupon.expires_at is not null and v_coupon.expires_at <= now()) then
+      raise exception 'COUPON_INVALID';
+    end if;
+    if v_coupon.product_ids is not null and not (p_product_id = any (v_coupon.product_ids)) then
+      raise exception 'COUPON_NOT_APPLICABLE';
+    end if;
+    -- Percent discounts round to the nearest peso (10% of 49 = 5).
+    v_discount := case v_coupon.type
+                    when 'percent' then round(v_product.price_php * v_coupon.value / 100.0)::integer
+                    else v_coupon.value end;
+    if v_product.price_php - v_discount < 1 then
+      raise exception 'COUPON_TOTAL_TOO_LOW';
+    end if;
+    update public.coupons set reserved_count = reserved_count + 1
+     where id = v_coupon.id
+       and (usage_limit is null or used_count + reserved_count < usage_limit);
+    if not found then
+      raise exception 'COUPON_UNAVAILABLE';
+    end if;
+  end if;
+
+  -- Referrer: the one bound at signup wins over a first-touch code. Self,
+  -- same email and same mobile are dropped silently.
+  v_ref_id := v_buyer.referred_by_user_id;
+  if v_ref_id is null and nullif(btrim(coalesce(p_ref_code, '')), '') is not null then
+    select id into v_ref_id from public.profiles where ref_code = upper(btrim(p_ref_code));
+  end if;
+  if v_ref_id is not null then
+    select * into v_referrer from public.profiles where id = v_ref_id;
+    if v_referrer.id = p_uid
+       or lower(v_referrer.email) = lower(v_buyer.email)
+       or (v_referrer.mobile is not null and v_referrer.mobile = v_buyer.mobile) then
+      v_ref_id := null;
+    end if;
+  end if;
+
+  v_expires := now() + case when p_method = 'bank'
+                            then public.setting_int('order_ttl_bank_h', 48) * interval '1 hour'
+                            else public.setting_int('order_ttl_online_min', 60) * interval '1 minute' end;
+
+  insert into public.orders
+    (user_id, product_id, status, price_php, discount_php, coupon_id, total_php,
+     referrer_user_id, ref_code, access_snapshot, method, expires_at, terms_accepted_at)
+  values
+    (p_uid, p_product_id,
+     case when p_method = 'bank' then 'awaiting_proof' else 'created' end,
+     v_product.price_php, v_discount, v_coupon.id, v_product.price_php - v_discount,
+     v_ref_id, nullif(upper(btrim(coalesce(p_ref_code, ''))), ''),
+     jsonb_build_object('type', v_product.type, 'title', v_product.title,
+                        'subject', v_product.subject, 'access_mode', v_product.access_mode,
+                        'attempts', v_product.attempts_per_purchase, 'expires_at', v_access_exp),
+     p_method, v_expires, now())
+  returning * into v_order;
+
+  if v_coupon.id is not null then
+    insert into public.coupon_reservations (order_id, coupon_id) values (v_order.id, v_coupon.id);
+  end if;
+
+  return jsonb_build_object(
+    'order_id', v_order.id, 'order_no', v_order.order_no, 'status', v_order.status,
+    'price_php', v_order.price_php, 'discount_php', v_order.discount_php,
+    'total_php', v_order.total_php, 'coupon_code', v_coupon.code,
+    'expires_at', v_order.expires_at, 'product_title', v_product.title,
+    'referred', v_ref_id is not null);
+end $$;
+
+create or replace function public.attach_checkout(
+  p_order_id uuid, p_provider_ref text, p_checkout_url text
+) returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  update public.orders
+     set status = 'awaiting_payment', provider_ref = p_provider_ref, checkout_url = p_checkout_url
+   where id = p_order_id and status = 'created';
+  return found;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- PayMongo webhook
+-- ---------------------------------------------------------------------------
+-- True when the event is new; a duplicate delivery returns false and the
+-- webhook answers 200 without doing anything else.
+create or replace function public.record_payment_event(
+  p_event_id text, p_type text, p_payload jsonb, p_order_id uuid
+) returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  insert into public.payment_events (provider_event_id, type, payload, order_id)
+  values (p_event_id, p_type, p_payload, p_order_id)
+  on conflict (provider_event_id) do nothing;
+  return found;
+end $$;
+
+create or replace function public.finish_payment_event(p_event_id text, p_outcome text)
+returns void
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  update public.payment_events set processed_at = now(), outcome = p_outcome
+   where provider_event_id = p_event_id;
+$$;
+
+-- payment.paid: amount or currency off -> on_hold + incident, never fulfil.
+create or replace function public.apply_payment_paid(
+  p_order_id            uuid,
+  p_amount_php          numeric,
+  p_currency            text,
+  p_provider_payment_id text,
+  p_payload             jsonb
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_order  public.orders;
+  v_ticket text;
+begin
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found then
+    v_ticket := public.open_incident('unmatched_payment', null, p_provider_payment_id,
+                                     p_amount_php, p_currency, null, p_payload);
+    return jsonb_build_object('outcome', 'unmatched', 'ticket', v_ticket);
+  end if;
+
+  if v_order.status = 'paid' then
+    if v_order.provider_payment_id is not null
+       and p_provider_payment_id is distinct from v_order.provider_payment_id then
+      v_ticket := public.open_incident('duplicate_payment', v_order.id, p_provider_payment_id,
+                                       p_amount_php, p_currency, v_order.total_php, p_payload);
+      return jsonb_build_object('outcome', 'duplicate', 'ticket', v_ticket);
+    end if;
+    return jsonb_build_object('outcome', 'already_paid');
+  end if;
+
+  if v_order.status = 'refunded' then
+    v_ticket := public.open_incident('out_of_order_status', v_order.id, p_provider_payment_id,
+                                     p_amount_php, p_currency, v_order.total_php, p_payload);
+    return jsonb_build_object('outcome', 'already_refunded', 'ticket', v_ticket);
+  end if;
+
+  update public.orders set provider_payment_id = coalesce(p_provider_payment_id, provider_payment_id)
+   where id = v_order.id;
+
+  if p_currency is null or upper(btrim(p_currency)) <> 'PHP' then
+    update public.orders set status = 'on_hold' where id = v_order.id;
+    v_ticket := public.open_incident('currency_mismatch', v_order.id, p_provider_payment_id,
+                                     p_amount_php, p_currency, v_order.total_php, p_payload);
+    perform public.write_audit(null, 'payments', 'order_on_hold', v_order.order_no,
+                               jsonb_build_object('ticket', v_ticket, 'currency', p_currency));
+    return jsonb_build_object('outcome', 'currency_mismatch', 'ticket', v_ticket);
+  end if;
+
+  if p_amount_php is null or p_amount_php = 'NaN'::numeric
+     or round(p_amount_php, 2) <> v_order.total_php then
+    update public.orders set status = 'on_hold' where id = v_order.id;
+    v_ticket := public.open_incident('amount_mismatch', v_order.id, p_provider_payment_id,
+                                     p_amount_php, p_currency, v_order.total_php, p_payload);
+    perform public.write_audit(null, 'payments', 'order_on_hold', v_order.order_no,
+                               jsonb_build_object('ticket', v_ticket, 'reported', p_amount_php,
+                                                  'expected', v_order.total_php));
+    return jsonb_build_object('outcome', 'amount_mismatch', 'ticket', v_ticket);
+  end if;
+
+  return public.fulfil_order(v_order.id, null, 'PayMongo payment.paid');
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- fulfil_order (§4): paid -> enrollment from the snapshot -> coupon use ->
+-- referral reward (unique per order) -> receipt email -> audit.
+-- p_actor null = system (webhook, reconciliation); an admin needs a reason.
+-- A paid order for a product the buyer already holds is a duplicate charge:
+-- it is marked paid, no second enrollment, and an incident opens for refund.
+-- ---------------------------------------------------------------------------
+create or replace function public.fulfil_order(p_order_id uuid, p_actor uuid, p_reason text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_order    public.orders;
+  v_buyer    public.profiles;
+  v_referrer public.profiles;
+  v_amount   integer;
+  v_ref_row  uuid;
+  v_dup      boolean := false;
+  v_mode     text;
+  v_ticket   text;
+begin
+  if p_actor is not null and nullif(btrim(coalesce(p_reason, '')), '') is null then
+    raise exception 'REASON_REQUIRED';
+  end if;
+
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found then
+    raise exception 'ORDER_NOT_FOUND';
+  end if;
+  if v_order.status = 'paid' then
+    return jsonb_build_object('outcome', 'already_paid', 'order_id', v_order.id);
+  end if;
+  if v_order.status = 'refunded' then
+    raise exception 'ORDER_NOT_FULFILLABLE';
+  end if;
+
+  update public.orders set status = 'paid', paid_at = now() where id = v_order.id;
+  select * into v_buyer from public.profiles where id = v_order.user_id;
+
+  perform public.end_lapsed_enrollments(v_order.user_id, v_order.product_id);
+  if exists (select 1 from public.enrollments
+              where user_id = v_order.user_id and product_id = v_order.product_id
+                and status = 'active') then
+    v_dup := true;
+    v_ticket := public.open_incident('duplicate_payment', v_order.id, v_order.provider_payment_id,
+                                     v_order.total_php, 'PHP', v_order.total_php, null);
+  else
+    v_mode := coalesce(v_order.access_snapshot->>'access_mode', 'unlimited');
+    insert into public.enrollments
+      (user_id, product_id, source, order_id, access_mode, attempts_allowed, expires_at)
+    values
+      (v_order.user_id, v_order.product_id, 'purchase', v_order.id, v_mode,
+       nullif(v_order.access_snapshot->>'attempts', '')::integer,
+       case when v_mode = 'exam_date' then public.exam_date_ts() end);
+  end if;
+
+  perform public.use_coupon(v_order.id);
+
+  if v_order.referrer_user_id is not null then
+    v_amount := public.setting_int('referral_amount', 9);
+    select * into v_referrer from public.profiles where id = v_order.referrer_user_id;
+    if v_amount > 0 and found then
+      insert into public.referrals
+        (referrer_ref_code, referrer_user_id, buyer_user_id, buyer_masked, order_id,
+         product_id, product_title, amount_php, reward_type, status)
+      values
+        (v_referrer.ref_code, v_referrer.id, v_order.user_id,
+         coalesce(public.mask_email(v_buyer.email), '***'), v_order.id, v_order.product_id,
+         coalesce(v_order.access_snapshot->>'title', 'Product'), v_amount,
+         coalesce((select case when value in ('cash','credit') then value end
+                     from public.settings where key = 'reward_type'), 'cash')::public.reward_type,
+         'available')
+      on conflict (order_id) do nothing
+      returning id into v_ref_row;
+      if v_ref_row is not null then
+        insert into public.balance_ledger (user_id, amount_php, source, ref_id)
+        values (v_referrer.id, v_amount, 'referral', v_ref_row);
+        perform public.enqueue_email('E6', v_referrer.email,
+          jsonb_build_object('name', v_referrer.display_name, 'amount', v_amount,
+                             'product', v_order.access_snapshot->>'title',
+                             'balance', public.balance_of(v_referrer.id),
+                             'threshold', public.setting_int('payout_threshold', 100),
+                             'ref_code', v_referrer.ref_code),
+          'E6:' || v_ref_row);
+      end if;
+    end if;
+  end if;
+
+  if v_order.method is distinct from 'bank' then
+    perform public.enqueue_email('E2', v_buyer.email,
+      jsonb_build_object('name', v_buyer.display_name, 'order_no', v_order.order_no,
+                         'product', v_order.access_snapshot->>'title',
+                         'price', v_order.price_php, 'discount', v_order.discount_php,
+                         'total', v_order.total_php, 'method', v_order.method,
+                         'access', v_order.access_snapshot),
+      'E2:' || v_order.id);
+  end if;
+
+  perform public.write_audit(p_actor, 'payments',
+    case when p_actor is null then 'order_fulfilled' else 'manual_fulfil' end,
+    v_order.order_no,
+    jsonb_build_object('reason', p_reason, 'total', v_order.total_php,
+                       'duplicate', v_dup, 'ticket', v_ticket,
+                       'referral', v_ref_row is not null));
+
+  return jsonb_build_object('outcome', 'fulfilled', 'order_id', v_order.id,
+                            'duplicate', v_dup, 'ticket', v_ticket);
+end $$;
+
+create or replace function public.fail_order(p_order_id uuid, p_reason text) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  update public.orders set status = 'failed'
+   where id = p_order_id and status in ('created','awaiting_payment','awaiting_proof');
+  if not found then
+    return jsonb_build_object('ok', true, 'noop', true);
+  end if;
+  perform public.release_coupon(p_order_id);
+  return jsonb_build_object('ok', true, 'noop', false, 'reason', p_reason);
+end $$;
+
+-- Job: unpaid orders past expires_at -> expired, coupon released. Orders with
+-- proof under review (pending_approval) never expire.
+create or replace function public.expire_orders() returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_id uuid;
+  v_n  integer := 0;
+begin
+  for v_id in
+    select id from public.orders
+     where status in ('created','awaiting_payment','awaiting_proof') and expires_at < now()
+     for update skip locked
+  loop
+    update public.orders set status = 'expired' where id = v_id;
+    perform public.release_coupon(v_id);
+    v_n := v_n + 1;
+  end loop;
+  return v_n;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Bank deposits (§5)
+-- ---------------------------------------------------------------------------
+create or replace function public.submit_bank_proof(
+  p_uid          uuid,
+  p_order_id     uuid,
+  p_bank         text,
+  p_amount       integer,
+  p_reference_no text,
+  p_proof_path   text,
+  p_sha256       text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_order public.orders;
+  v_buyer public.profiles;
+  v_dep   uuid;
+  v_dup   boolean;
+  v_admin text;
+begin
+  select * into v_order from public.orders where id = p_order_id and user_id = p_uid for update;
+  if not found then
+    raise exception 'ORDER_NOT_FOUND';
+  end if;
+  if v_order.method is distinct from 'bank' then
+    raise exception 'METHOD_INVALID';
+  end if;
+  if v_order.status not in ('awaiting_proof','pending_approval') then
+    raise exception 'ORDER_NOT_AWAITING_PROOF';
+  end if;
+  if v_order.status = 'awaiting_proof' and v_order.expires_at < now() then
+    raise exception 'ORDER_EXPIRED';
+  end if;
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'AMOUNT_INVALID';
+  end if;
+
+  -- A replacement proof while one is pending supersedes the old one.
+  update public.bank_deposits set status = 'superseded'
+   where order_id = p_order_id and status = 'pending_approval';
+
+  insert into public.bank_deposits
+    (order_id, user_id, bank, amount_received, reference_no, proof_path, proof_sha256)
+  values (p_order_id, p_uid, lower(p_bank), p_amount, btrim(p_reference_no), p_proof_path, lower(p_sha256))
+  returning id into v_dep;
+
+  update public.orders set status = 'pending_approval' where id = p_order_id;
+
+  select exists (
+    select 1 from public.bank_deposits d
+     where d.id <> v_dep and d.order_id <> p_order_id
+       and ((d.bank = lower(p_bank) and lower(d.reference_no) = lower(btrim(p_reference_no)))
+         or d.proof_sha256 = lower(p_sha256))) into v_dup;
+
+  select * into v_buyer from public.profiles where id = p_uid;
+  perform public.enqueue_email('E3', v_buyer.email,
+    jsonb_build_object('name', v_buyer.display_name, 'order_no', v_order.order_no,
+                       'product', v_order.access_snapshot->>'title', 'amount', p_amount,
+                       'bank', lower(p_bank), 'sla_hours', public.setting_int('bank_sla_hours', 24)),
+    'E3:' || v_dep);
+  for v_admin in select email from public.admins loop
+    perform public.enqueue_email('A1', v_admin,
+      jsonb_build_object('order_no', v_order.order_no, 'amount', p_amount,
+                         'total', v_order.total_php, 'bank', lower(p_bank), 'duplicate', v_dup),
+      'A1:' || v_dep || ':' || v_admin);
+  end loop;
+
+  return jsonb_build_object('deposit_id', v_dep, 'duplicate_warning', v_dup);
+end $$;
+
+create or replace function public.approve_deposit(p_deposit_id uuid, p_admin uuid) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_dep   public.bank_deposits;
+  v_order public.orders;
+  v_buyer public.profiles;
+  v_extra integer;
+begin
+  select * into v_dep from public.bank_deposits where id = p_deposit_id for update;
+  if not found then
+    raise exception 'DEPOSIT_NOT_FOUND';
+  end if;
+  if v_dep.status <> 'pending_approval' then
+    return jsonb_build_object('ok', true, 'noop', true, 'status', v_dep.status);
+  end if;
+
+  select * into v_order from public.orders where id = v_dep.order_id for update;
+  if v_dep.amount_received < v_order.total_php then
+    raise exception 'DEPOSIT_UNDERPAID';
+  end if;
+
+  update public.bank_deposits
+     set status = 'approved', reviewed_by = p_admin, reviewed_at = now()
+   where id = v_dep.id;
+
+  perform public.fulfil_order(v_order.id, p_admin, 'Bank deposit approved');
+
+  v_extra := v_dep.amount_received - v_order.total_php;
+  if v_extra > 0 then
+    insert into public.balance_ledger (user_id, amount_php, source, ref_id, note, created_by)
+    values (v_order.user_id, v_extra, 'deposit_credit', v_dep.id,
+            'Overpayment on ' || v_order.order_no, p_admin);
+  end if;
+
+  select * into v_buyer from public.profiles where id = v_order.user_id;
+  perform public.enqueue_email('E4', v_buyer.email,
+    jsonb_build_object('name', v_buyer.display_name, 'order_no', v_order.order_no,
+                       'product', v_order.access_snapshot->>'title',
+                       'amount', v_dep.amount_received, 'bank', v_dep.bank,
+                       'credit', v_extra, 'access', v_order.access_snapshot),
+    'E4:' || v_dep.id);
+  perform public.write_audit(p_admin, 'payments', 'deposit_approved', v_order.order_no,
+    jsonb_build_object('amount', v_dep.amount_received, 'bank', v_dep.bank, 'credit', v_extra));
+
+  return jsonb_build_object('ok', true, 'noop', false, 'credit', v_extra);
+end $$;
+
+-- Underpaid: rejecting credits the full amount received to the balance (E12).
+create or replace function public.reject_deposit(
+  p_deposit_id uuid, p_admin uuid, p_reason text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_dep    public.bank_deposits;
+  v_order  public.orders;
+  v_buyer  public.profiles;
+  v_credit integer := 0;
+begin
+  if nullif(btrim(coalesce(p_reason, '')), '') is null then
+    raise exception 'REASON_REQUIRED';
+  end if;
+  select * into v_dep from public.bank_deposits where id = p_deposit_id for update;
+  if not found then
+    raise exception 'DEPOSIT_NOT_FOUND';
+  end if;
+  if v_dep.status <> 'pending_approval' then
+    return jsonb_build_object('ok', true, 'noop', true, 'status', v_dep.status);
+  end if;
+  select * into v_order from public.orders where id = v_dep.order_id for update;
+
+  update public.bank_deposits
+     set status = 'rejected', reject_reason = btrim(p_reason),
+         reviewed_by = p_admin, reviewed_at = now()
+   where id = v_dep.id;
+
+  update public.orders
+     set status = 'awaiting_proof',
+         expires_at = now() + public.setting_int('order_ttl_bank_h', 48) * interval '1 hour'
+   where id = v_order.id and status = 'pending_approval';
+
+  select * into v_buyer from public.profiles where id = v_order.user_id;
+  if v_dep.amount_received < v_order.total_php then
+    v_credit := v_dep.amount_received;
+    insert into public.balance_ledger (user_id, amount_php, source, ref_id, note, created_by)
+    values (v_order.user_id, v_credit, 'deposit_credit', v_dep.id,
+            'Short deposit on ' || v_order.order_no, p_admin);
+    perform public.enqueue_email('E12', v_buyer.email,
+      jsonb_build_object('name', v_buyer.display_name, 'order_no', v_order.order_no,
+                         'product', v_order.access_snapshot->>'title',
+                         'received', v_dep.amount_received, 'total', v_order.total_php,
+                         'short_by', v_order.total_php - v_dep.amount_received),
+      'E12:' || v_dep.id);
+  else
+    perform public.enqueue_email('E5', v_buyer.email,
+      jsonb_build_object('name', v_buyer.display_name, 'order_no', v_order.order_no,
+                         'bank', v_dep.bank, 'reason', btrim(p_reason)),
+      'E5:' || v_dep.id);
+  end if;
+
+  perform public.write_audit(p_admin, 'payments', 'deposit_rejected', v_order.order_no,
+    jsonb_build_object('reason', btrim(p_reason), 'amount', v_dep.amount_received,
+                       'bank', v_dep.bank, 'credit', v_credit));
+  return jsonb_build_object('ok', true, 'noop', false, 'credit', v_credit);
+end $$;
+
+-- Job: admin reminder for deposits waiting more than half the SLA.
+create or replace function public.deposit_sla_reminders() returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_dep   record;
+  v_admin text;
+  v_n     integer := 0;
+begin
+  for v_dep in
+    select d.id, o.order_no, d.created_at from public.bank_deposits d
+      join public.orders o on o.id = d.order_id
+     where d.status = 'pending_approval'
+       and d.created_at < now() - public.setting_int('bank_sla_hours', 24) * interval '30 minutes'
+  loop
+    for v_admin in select email from public.admins loop
+      perform public.enqueue_email('A1', v_admin,
+        jsonb_build_object('order_no', v_dep.order_no, 'reminder', true,
+                           'submitted_at', v_dep.created_at),
+        'A1R:' || v_dep.id || ':' || v_admin);
+    end loop;
+    v_n := v_n + 1;
+  end loop;
+  return v_n;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Refunds (§10): only failed-but-charged and duplicate payments. Voids the
+-- referral reward; revokes an enrollment only if this order granted it.
+-- The PayMongo refund call happens in the Edge Function first.
+-- ---------------------------------------------------------------------------
+create or replace function public.refund_order(
+  p_order_id uuid, p_admin uuid, p_reason text, p_issue_id uuid default null
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_order public.orders;
+  v_buyer public.profiles;
+  v_ref   record;
+  v_rev   integer;
+begin
+  if nullif(btrim(coalesce(p_reason, '')), '') is null then
+    raise exception 'REASON_REQUIRED';
+  end if;
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found then
+    raise exception 'ORDER_NOT_FOUND';
+  end if;
+  if v_order.status = 'refunded' then
+    return jsonb_build_object('ok', true, 'noop', true);
+  end if;
+  if v_order.status not in ('paid','on_hold','failed','expired') then
+    raise exception 'ORDER_NOT_REFUNDABLE';
+  end if;
+
+  update public.orders set status = 'refunded', refunded_at = now() where id = v_order.id;
+
+  for v_ref in
+    update public.referrals set status = 'void', voided_at = now()
+     where order_id = v_order.id and status <> 'void'
+    returning id, referrer_user_id, amount_php
+  loop
+    insert into public.balance_ledger (user_id, amount_php, source, ref_id, note, created_by)
+    values (v_ref.referrer_user_id, -v_ref.amount_php, 'adjustment', v_ref.id,
+            'Referral voided: refund of ' || v_order.order_no, p_admin);
+  end loop;
+
+  update public.enrollments
+     set status = 'revoked', ended_at = now(), revoked_reason = 'Refund of ' || v_order.order_no
+   where order_id = v_order.id and status = 'active';
+  get diagnostics v_rev = row_count;
+
+  update public.incidents set resolved_at = now(), resolved_by = p_admin
+   where order_id = v_order.id and resolved_at is null;
+  if p_issue_id is not null then
+    update public.issues
+       set status = 'refunded', resolution = btrim(p_reason), resolved_by = p_admin, resolved_at = now()
+     where id = p_issue_id and status = 'open';
+  end if;
+
+  select * into v_buyer from public.profiles where id = v_order.user_id;
+  perform public.enqueue_email('E8', v_buyer.email,
+    jsonb_build_object('name', v_buyer.display_name, 'order_no', v_order.order_no,
+                       'product', v_order.access_snapshot->>'title',
+                       'amount', v_order.total_php, 'method', v_order.method,
+                       'access_kept', v_rev = 0),
+    'E8:' || v_order.id);
+  perform public.write_audit(p_admin, 'payments', 'refund_issued', v_order.order_no,
+    jsonb_build_object('reason', btrim(p_reason), 'amount', v_order.total_php,
+                       'enrollment_revoked', v_rev > 0));
+  return jsonb_build_object('ok', true, 'noop', false, 'enrollment_revoked', v_rev > 0);
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Admin access changes (§11) and the referral ledger Void action (§7)
+-- ---------------------------------------------------------------------------
+create or replace function public.grant_access(
+  p_admin uuid, p_user_id uuid, p_product_id uuid, p_source text,
+  p_expires_at timestamptz, p_reason text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_product public.products;
+  v_id      uuid;
+  v_mode    text;
+begin
+  if p_source not in ('comp','credit') then
+    raise exception 'SOURCE_INVALID';
+  end if;
+  if nullif(btrim(coalesce(p_reason, '')), '') is null then
+    raise exception 'REASON_REQUIRED';
+  end if;
+  select * into v_product from public.products where id = p_product_id;
+  if not found then
+    raise exception 'PRODUCT_NOT_FOUND';
+  end if;
+  perform public.end_lapsed_enrollments(p_user_id, p_product_id);
+  if exists (select 1 from public.enrollments
+              where user_id = p_user_id and product_id = p_product_id and status = 'active') then
+    raise exception 'ALREADY_OWNED';
+  end if;
+
+  v_mode := case when p_expires_at is not null then 'fixed' else v_product.access_mode end;
+  insert into public.enrollments
+    (user_id, product_id, source, access_mode, attempts_allowed, expires_at)
+  values (p_user_id, p_product_id, p_source::public.enrollment_source, v_mode,
+          v_product.attempts_per_purchase,
+          case when p_expires_at is not null then p_expires_at
+               when v_mode = 'exam_date' then public.exam_date_ts() end)
+  returning id into v_id;
+
+  perform public.write_audit(p_admin, 'access', 'grant_access',
+    (select email from public.profiles where id = p_user_id),
+    jsonb_build_object('product', v_product.title, 'source', p_source,
+                       'reason', btrim(p_reason), 'enrollment_id', v_id));
+  return jsonb_build_object('ok', true, 'enrollment_id', v_id);
+end $$;
+
+create or replace function public.revoke_access(
+  p_admin uuid, p_enrollment_id uuid, p_reason text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_e public.enrollments;
+begin
+  if nullif(btrim(coalesce(p_reason, '')), '') is null then
+    raise exception 'REASON_REQUIRED';
+  end if;
+  update public.enrollments
+     set status = 'revoked', ended_at = now(), revoked_reason = btrim(p_reason)
+   where id = p_enrollment_id and status = 'active'
+  returning * into v_e;
+  if not found then
+    return jsonb_build_object('ok', true, 'noop', true);
+  end if;
+  perform public.write_audit(p_admin, 'access', 'revoke_access',
+    (select email from public.profiles where id = v_e.user_id),
+    jsonb_build_object('product', (select title from public.products where id = v_e.product_id),
+                       'reason', btrim(p_reason), 'enrollment_id', v_e.id));
+  return jsonb_build_object('ok', true, 'noop', false);
+end $$;
+
+create or replace function public.void_referral(
+  p_admin uuid, p_referral_id uuid, p_reason text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_r public.referrals;
+begin
+  if nullif(btrim(coalesce(p_reason, '')), '') is null then
+    raise exception 'REASON_REQUIRED';
+  end if;
+  update public.referrals set status = 'void', voided_at = now(), notes = btrim(p_reason)
+   where id = p_referral_id and status <> 'void'
+  returning * into v_r;
+  if not found then
+    return jsonb_build_object('ok', true, 'noop', true);
+  end if;
+  insert into public.balance_ledger (user_id, amount_php, source, ref_id, note, created_by)
+  values (v_r.referrer_user_id, -v_r.amount_php, 'adjustment', v_r.id,
+          'Referral voided: ' || btrim(p_reason), p_admin);
+  perform public.write_audit(p_admin, 'referrals', 'referral_voided', v_r.referrer_ref_code,
+    jsonb_build_object('referral_id', v_r.id, 'amount', v_r.amount_php, 'reason', btrim(p_reason)));
+  return jsonb_build_object('ok', true, 'noop', false);
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Exam date (§1): moving it moves every active exam_date enrollment.
+-- ---------------------------------------------------------------------------
+create or replace function public.set_exam_date(p_admin uuid, p_date date) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_old text;
+  v_n   integer;
+begin
+  if p_date is null or p_date <= current_date then
+    raise exception 'EXAM_DATE_INVALID';
+  end if;
+  select value into v_old from public.settings where key = 'exam_date' for update;
+  update public.settings set value = to_char(p_date, 'YYYY-MM-DD'), updated_at = now()
+   where key = 'exam_date';
+  update public.enrollments set expires_at = public.exam_date_ts()
+   where status = 'active' and access_mode = 'exam_date';
+  get diagnostics v_n = row_count;
+  perform public.write_audit(p_admin, 'settings', 'exam_date_changed', 'exam_date',
+    jsonb_build_object('from', v_old, 'to', to_char(p_date, 'YYYY-MM-DD'), 'enrollments_moved', v_n));
+  return jsonb_build_object('ok', true, 'enrollments_moved', v_n);
+end $$;
+
+-- Job (nightly): end enrollments past their expiry.
+create or replace function public.expire_enrollments() returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_n integer;
+begin
+  update public.enrollments set status = 'ended', ended_at = now()
+   where status = 'active' and expires_at is not null and expires_at <= now();
+  get diagnostics v_n = row_count;
+  if v_n > 0 then
+    perform public.write_audit(null, 'access', 'enrollments_expired', null,
+                               jsonb_build_object('count', v_n));
+  end if;
+  return v_n;
+end $$;
+
+-- =======================================================================
+-- 0021_fn_v2_learning.sql
+-- =======================================================================
+-- 0021_fn_v2_learning.sql
+-- Exams (BACKEND_RULES.md §8): starting an attempt uses it, answers autosave
+-- until ends_at, submit grades on the server and is idempotent, a job
+-- auto-submits attempts past ends_at. Plus the public leaderboard.
+
+-- Result shape shared by submit_attempt and its idempotent replay.
+-- Passing: >= 70% overall and no subject below 50%.
+create or replace function public.attempt_result(p_attempt public.attempts) returns jsonb
+language sql stable
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'attempt_id', p_attempt.id,
+    'quiz_id', p_attempt.quiz_id,
+    'attempt_no', p_attempt.attempt_no,
+    'score', p_attempt.score,
+    'total', p_attempt.total,
+    'pct', case when p_attempt.total > 0
+                then round(p_attempt.score * 100.0 / p_attempt.total)::integer else 0 end,
+    'breakdown', coalesce(p_attempt.breakdown, '{}'::jsonb),
+    'passed', p_attempt.total > 0
+              and p_attempt.score * 100.0 / p_attempt.total >= 70
+              and not exists (
+                select 1 from jsonb_each(coalesce(p_attempt.breakdown, '{}'::jsonb)) b
+                 where (b.value->>'total')::integer > 0
+                   and (b.value->>'correct')::numeric * 100 / (b.value->>'total')::numeric < 50),
+    'submitted_at', p_attempt.submitted_at,
+    'auto_submitted', p_attempt.auto_submitted);
+$$;
+
+-- p_uid null = the system (auto-submit job).
+create or replace function public.submit_attempt(
+  p_attempt_id uuid, p_uid uuid, p_auto boolean default false
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_a         public.attempts;
+  v_e         public.enrollments;
+  v_score     integer;
+  v_total     integer;
+  v_breakdown jsonb;
+  v_result    jsonb;
+begin
+  select * into v_a from public.attempts where id = p_attempt_id for update;
+  if not found or (p_uid is not null and v_a.user_id <> p_uid) then
+    raise exception 'ATTEMPT_NOT_FOUND';
+  end if;
+  if v_a.status = 'submitted' then
+    return public.attempt_result(v_a);
+  end if;
+
+  -- Unanswered items count as wrong. Subject per question, falling back to
+  -- the quiz subject.
+  with q as (
+    select u.qid, qs.correct_index,
+           coalesce(qs.subject, case when z.subject in ('A','B') then z.subject end, 'ALL') as subj
+      from unnest(v_a.question_ids) as u(qid)
+      join public.questions qs on qs.id = u.qid
+      join public.quizzes z on z.id = qs.quiz_id),
+  g as (
+    select q.subj, (aa.choice is not null and aa.choice = q.correct_index) as ok
+      from q left join public.attempt_answers aa
+        on aa.attempt_id = v_a.id and aa.question_id = q.qid),
+  s as (
+    select subj, count(*) filter (where ok) as c, count(*) as t from g group by subj)
+  select coalesce(sum(c), 0)::integer, coalesce(sum(t), 0)::integer,
+         coalesce(jsonb_object_agg(subj, jsonb_build_object('correct', c, 'total', t)), '{}'::jsonb)
+    into v_score, v_total, v_breakdown
+    from s;
+
+  update public.attempts
+     set status = 'submitted', submitted_at = now(), auto_submitted = coalesce(p_auto, false),
+         score = v_score, total = v_total, breakdown = v_breakdown
+   where id = v_a.id
+  returning * into v_a;
+
+  v_result := public.attempt_result(v_a);
+
+  if v_a.enrollment_id is not null then
+    select * into v_e from public.enrollments where id = v_a.enrollment_id;
+    if v_e.attempts_allowed is not null and v_e.attempts_allowed - v_e.attempts_used = 1 then
+      perform public.enqueue_email('E10',
+        (select email from public.profiles where id = v_a.user_id),
+        jsonb_build_object('name', (select display_name from public.profiles where id = v_a.user_id),
+                           'quiz', (select title from public.quizzes where id = v_a.quiz_id),
+                           'pct', v_result->'pct', 'breakdown', v_breakdown,
+                           'attempts_left', 1, 'attempts_allowed', v_e.attempts_allowed),
+        'E10:' || v_e.id);
+    end if;
+  end if;
+
+  return v_result;
+end $$;
+
+create or replace function public.start_attempt(p_uid uuid, p_quiz_id uuid) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_quiz    public.quizzes;
+  v_open    public.attempts;
+  v_e       public.enrollments;
+  v_free    boolean;
+  v_ids     uuid[];
+  v_no      integer;
+  v_attempt public.attempts;
+begin
+  select * into v_quiz from public.quizzes where id = p_quiz_id and status = 'published';
+  if not found then
+    raise exception 'QUIZ_NOT_FOUND';
+  end if;
+  if not exists (select 1 from public.profiles where id = p_uid and signup_completed_at is not null) then
+    raise exception 'SIGNUP_INCOMPLETE';
+  end if;
+
+  select * into v_open from public.attempts
+   where user_id = p_uid and status = 'in_progress' for update;
+  if found then
+    if v_open.ends_at is not null and v_open.ends_at <= now() then
+      perform public.submit_attempt(v_open.id, null, true);
+    elsif v_open.quiz_id = p_quiz_id then
+      return jsonb_build_object(
+        'attempt_id', v_open.id, 'quiz_id', v_open.quiz_id, 'attempt_no', v_open.attempt_no,
+        'started_at', v_open.started_at, 'ends_at', v_open.ends_at, 'server_now', now(),
+        'question_ids', to_jsonb(v_open.question_ids), 'resumed', true);
+    else
+      raise exception 'ATTEMPT_IN_PROGRESS';
+    end if;
+  end if;
+
+  v_free := exists (
+    select 1 from public.pack_quizzes pq join public.products p on p.id = pq.product_id
+     where pq.quiz_id = p_quiz_id and p.type = 'free' and p.status = 'published');
+
+  if not v_free then
+    update public.enrollments e set status = 'ended', ended_at = now()
+     where e.user_id = p_uid and e.status = 'active'
+       and e.expires_at is not null and e.expires_at <= now()
+       and e.product_id in (select product_id from public.pack_quizzes where quiz_id = p_quiz_id);
+
+    select e.* into v_e
+      from public.enrollments e
+      join public.pack_quizzes pq on pq.product_id = e.product_id
+     where pq.quiz_id = p_quiz_id and e.user_id = p_uid and e.status = 'active'
+       and (e.attempts_allowed is null or e.attempts_used < e.attempts_allowed)
+     order by e.created_at
+     limit 1
+     for update of e;
+    if not found then
+      if exists (select 1 from public.enrollments e
+                   join public.pack_quizzes pq on pq.product_id = e.product_id
+                  where pq.quiz_id = p_quiz_id and e.user_id = p_uid
+                    and e.attempts_allowed is not null and e.attempts_used >= e.attempts_allowed) then
+        raise exception 'ATTEMPTS_USED';
+      end if;
+      raise exception 'NO_ACCESS';
+    end if;
+
+    -- Starting uses the attempt; the last one ends the enrollment now, while
+    -- the attempt itself stays open until submitted.
+    update public.enrollments
+       set attempts_used = attempts_used + 1,
+           status   = case when attempts_allowed is not null and attempts_used + 1 >= attempts_allowed
+                           then 'ended' else status end,
+           ended_at = case when attempts_allowed is not null and attempts_used + 1 >= attempts_allowed
+                           then now() else ended_at end
+     where id = v_e.id
+    returning * into v_e;
+  end if;
+
+  select coalesce(array_agg(id order by question_number), '{}') into v_ids
+    from public.questions where quiz_id = p_quiz_id and status = 'published';
+  if cardinality(v_ids) = 0 then
+    raise exception 'QUIZ_EMPTY';
+  end if;
+
+  select count(*) + 1 into v_no from public.attempts where user_id = p_uid and quiz_id = p_quiz_id;
+
+  insert into public.attempts (user_id, quiz_id, enrollment_id, attempt_no, question_ids, ends_at)
+  values (p_uid, p_quiz_id, v_e.id, v_no, v_ids,
+          case when v_quiz.time_limit_sec > 0
+               then now() + v_quiz.time_limit_sec * interval '1 second' end)
+  returning * into v_attempt;
+
+  return jsonb_build_object(
+    'attempt_id', v_attempt.id, 'quiz_id', p_quiz_id, 'attempt_no', v_attempt.attempt_no,
+    'started_at', v_attempt.started_at, 'ends_at', v_attempt.ends_at, 'server_now', now(),
+    'question_ids', to_jsonb(v_ids), 'resumed', false,
+    'attempts_allowed', v_e.attempts_allowed, 'attempts_used', v_e.attempts_used);
+end $$;
+
+-- Batch autosave, used for every change and for the offline queue sync:
+-- p_answers = [{question_id, choice (int|null), flagged (bool)}].
+-- Rejected once ends_at has passed (5s grace for the request in flight).
+create or replace function public.save_answers(
+  p_uid uuid, p_attempt_id uuid, p_answers jsonb
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_a public.attempts;
+  v_n integer;
+begin
+  select * into v_a from public.attempts
+   where id = p_attempt_id and user_id = p_uid for share;
+  if not found then
+    raise exception 'ATTEMPT_NOT_FOUND';
+  end if;
+  if v_a.status <> 'in_progress'
+     or (v_a.ends_at is not null and now() > v_a.ends_at + interval '5 seconds') then
+    raise exception 'ATTEMPT_CLOSED';
+  end if;
+  if jsonb_typeof(p_answers) <> 'array' then
+    raise exception 'ANSWERS_INVALID';
+  end if;
+
+  insert into public.attempt_answers (attempt_id, question_id, choice, flagged, updated_at)
+  select p_attempt_id, (x->>'question_id')::uuid,
+         case when jsonb_typeof(x->'choice') = 'number' then (x->>'choice')::integer end,
+         coalesce((x->>'flagged')::boolean, false), now()
+    from jsonb_array_elements(p_answers) x
+   where (x->>'question_id')::uuid = any (v_a.question_ids)
+  on conflict (attempt_id, question_id) do update
+     set choice = excluded.choice, flagged = excluded.flagged, updated_at = now();
+  get diagnostics v_n = row_count;
+  return jsonb_build_object('saved', v_n, 'saved_at', now());
+end $$;
+
+-- Job (every minute): submit attempts whose timer ran out.
+create or replace function public.auto_submit_due() returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_id uuid;
+  v_n  integer := 0;
+begin
+  for v_id in
+    select id from public.attempts
+     where status = 'in_progress' and ends_at is not null and ends_at < now()
+     for update skip locked
+  loop
+    perform public.submit_attempt(v_id, null, true);
+    v_n := v_n + 1;
+  end loop;
+  return v_n;
+end $$;
+
+-- Public leaderboard (§8): best submitted attempt per user, display name
+-- only, for students who accepted the public_leaderboard consent. The
+-- caller's own row is always included so "your rank" can be shown.
+create or replace function public.leaderboard(p_quiz_id uuid, p_limit integer default 10)
+returns table (rank bigint, display_name text, pct integer, is_me boolean, entrants bigint)
+language sql stable
+security definer
+set search_path = public, pg_temp
+as $$
+  with best as (
+    select distinct on (a.user_id)
+           a.user_id, a.score::numeric / a.total as ratio,
+           round(a.score * 100.0 / a.total)::integer as pct
+      from public.attempts a
+     where a.quiz_id = p_quiz_id and a.status = 'submitted' and a.total > 0
+       and exists (select 1 from public.consents c
+                    where c.user_id = a.user_id and c.type = 'public_leaderboard')
+     order by a.user_id, a.score::numeric / a.total desc, a.submitted_at
+  ),
+  ranked as (
+    select b.*, rank() over (order by b.ratio desc) as r, count(*) over () as n from best b
+  )
+  select r.r, coalesce(nullif(btrim(p.display_name), ''), 'Reviewee'), r.pct,
+         r.user_id = auth.uid(), r.n
+    from ranked r join public.profiles p on p.id = r.user_id
+   where coalesce((select value from public.settings where key = 'leaderboard_mode'), 'public') <> 'off'
+     and (r.r <= least(greatest(coalesce(p_limit, 10), 1), 50) or r.user_id = auth.uid())
+   order by r.r, 2;
+$$;
+
+-- =======================================================================
+-- 0022_fn_v2_payouts_jobs.sql
+-- =======================================================================
+-- 0022_fn_v2_payouts_jobs.sql
+-- Payouts (BACKEND_RULES.md §7), the pg_cron schedule for the SQL-only jobs
+-- (§4, §5, §8), and the final EXECUTE lockdown for every v2 routine.
+
+-- ---------------------------------------------------------------------------
+-- Payouts: the request and its negative ledger row commit together, which
+-- locks the amount; the buyer row lock makes a double click a no-op.
+-- ---------------------------------------------------------------------------
+create or replace function public.request_payout(p_uid uuid) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_p       public.profiles;
+  v_balance integer;
+  v_min     integer := public.setting_int('payout_threshold', 100);
+  v_id      uuid;
+begin
+  select * into v_p from public.profiles where id = p_uid for update;
+  if not found then
+    raise exception 'PROFILE_NOT_FOUND';
+  end if;
+  if v_p.mobile is null then
+    raise exception 'MOBILE_REQUIRED';
+  end if;
+  if exists (select 1 from public.payouts where user_id = p_uid and status = 'requested') then
+    raise exception 'PAYOUT_PENDING';
+  end if;
+  v_balance := public.balance_of(p_uid);
+  if v_balance < v_min then
+    raise exception 'BELOW_THRESHOLD';
+  end if;
+
+  insert into public.payouts (user_id, amount_php, mobile)
+  values (p_uid, v_balance, v_p.mobile)
+  returning id into v_id;
+  insert into public.balance_ledger (user_id, amount_php, source, ref_id)
+  values (p_uid, -v_balance, 'payout', v_id);
+  update public.referrals set status = 'redeemed', redeemed_at = now()
+   where referrer_user_id = p_uid and status = 'available';
+
+  perform public.enqueue_email('E11', v_p.email,
+    jsonb_build_object('name', v_p.display_name, 'amount', v_balance, 'mobile', v_p.mobile),
+    'E11:' || v_id);
+  perform public.write_audit(p_uid, 'referrals', 'payout_requested', v_p.ref_code,
+                             jsonb_build_object('amount', v_balance, 'payout_id', v_id));
+  return jsonb_build_object('ok', true, 'payout_id', v_id, 'amount', v_balance);
+end $$;
+
+create or replace function public.mark_payout_sent(
+  p_payout_id uuid, p_admin uuid, p_gcash_ref text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_po public.payouts;
+  v_p  public.profiles;
+begin
+  if nullif(btrim(coalesce(p_gcash_ref, '')), '') is null then
+    raise exception 'GCASH_REF_REQUIRED';
+  end if;
+  update public.payouts
+     set status = 'sent', gcash_ref = btrim(p_gcash_ref), sent_at = now(), handled_by = p_admin
+   where id = p_payout_id and status = 'requested'
+  returning * into v_po;
+  if not found then
+    return jsonb_build_object('ok', true, 'noop', true);
+  end if;
+  select * into v_p from public.profiles where id = v_po.user_id;
+  perform public.enqueue_email('E7', v_p.email,
+    jsonb_build_object('name', v_p.display_name, 'amount', v_po.amount_php,
+                       'mobile', v_po.mobile, 'gcash_ref', v_po.gcash_ref),
+    'E7:' || v_po.id);
+  perform public.write_audit(p_admin, 'referrals', 'payout_sent', v_p.ref_code,
+    jsonb_build_object('amount', v_po.amount_php, 'gcash_ref', v_po.gcash_ref));
+  return jsonb_build_object('ok', true, 'noop', false);
+end $$;
+
+-- A payout that failed (wrong number) goes back on the balance.
+create or replace function public.reverse_payout(
+  p_payout_id uuid, p_admin uuid, p_reason text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_po public.payouts;
+begin
+  if nullif(btrim(coalesce(p_reason, '')), '') is null then
+    raise exception 'REASON_REQUIRED';
+  end if;
+  update public.payouts
+     set status = 'reversed', notes = btrim(p_reason), handled_by = p_admin
+   where id = p_payout_id and status in ('requested','sent')
+  returning * into v_po;
+  if not found then
+    return jsonb_build_object('ok', true, 'noop', true);
+  end if;
+  insert into public.balance_ledger (user_id, amount_php, source, ref_id, note, created_by)
+  values (v_po.user_id, v_po.amount_php, 'payout_reversal', v_po.id, btrim(p_reason), p_admin);
+  perform public.write_audit(p_admin, 'referrals', 'payout_reversed',
+    (select ref_code from public.profiles where id = v_po.user_id),
+    jsonb_build_object('amount', v_po.amount_php, 'reason', btrim(p_reason)));
+  return jsonb_build_object('ok', true, 'noop', false);
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- pg_cron. Reconciliation with PayMongo and the outbox sender need HTTP and
+-- are scheduled from the Edge Functions phase. Without pg_cron (some local
+-- stacks) the schedule is skipped and the jobs can be run by hand.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  begin
+    create extension if not exists pg_cron with schema pg_catalog;
+  exception when others then
+    raise notice 'pg_cron not available (%); jobs not scheduled', sqlerrm;
+    return;
+  end;
+  perform cron.schedule('arkiprep-auto-submit',     '* * * * *',    'select public.auto_submit_due()');
+  perform cron.schedule('arkiprep-expire-orders',   '* * * * *',    'select public.expire_orders()');
+  perform cron.schedule('arkiprep-stale-sessions',  '*/5 * * * *',  'select public.end_stale_sessions()');
+  perform cron.schedule('arkiprep-deposit-sla',     '*/15 * * * *', 'select public.deposit_sla_reminders()');
+  -- 00:05 Asia/Manila
+  perform cron.schedule('arkiprep-expire-enrollments', '5 16 * * *', 'select public.expire_enrollments()');
+exception when others then
+  raise notice 'pg_cron scheduling skipped: %', sqlerrm;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- EXECUTE lockdown: every routine in public is service-role only, except the
+-- public leaderboard.
+-- ---------------------------------------------------------------------------
+revoke execute on all functions in schema public from public, anon, authenticated;
+grant execute on function public.leaderboard(uuid, integer) to anon, authenticated;
+
+-- =======================================================================
 -- Backfill: profiles for auth users created before the signup trigger
 -- =======================================================================
-insert into public.profiles (id, email, ref_code, is_admin)
-select u.id, u.email, public.gen_ref_code(),
-       exists (select 1 from public.admin_bootstrap_emails b where b.email = lower(u.email))
+insert into public.profiles (id, email, ref_code)
+select u.id, u.email, public.gen_ref_code()
   from auth.users u
 on conflict (id) do nothing;
 
 commit;
 
-select 'all 12 migrations applied' as result,
+select 'all migrations applied' as result,
        (select count(*) from public.profiles) as profiles,
-       (select count(*) from public.profiles where is_admin) as admins;
+       (select count(*) from public.profiles p
+          join public.admins a on a.email = lower(p.email)) as admins;
