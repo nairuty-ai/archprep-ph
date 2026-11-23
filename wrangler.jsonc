@@ -5,8 +5,6 @@
   "name": "archprep-ph",
   "compatibility_date": "2025-09-01",
   "assets": {
-    "directory": "./",
-    // Pages link to each other as page.html; keep those URLs as they are.
-    "html_handling": "none"
+    "directory": "./"
   }
 }

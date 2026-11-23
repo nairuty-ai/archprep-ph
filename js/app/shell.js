@@ -143,7 +143,8 @@ export async function mountShell({ active = null, requireAuth = false, chrome = 
   const [profile, balance] = user ? await Promise.all([getProfile(user.id), getBalance()]) : [null, 0];
 
   // First login is signup: finish it before using the site.
-  if (user && profile && !profile.signup_completed_at && !location.pathname.endsWith('login.html')) {
+  // Cloudflare serves page.html at /page, so match both forms.
+  if (user && profile && !profile.signup_completed_at && !/\/login(\.html)?$/.test(location.pathname)) {
     location.href = 'login.html?step=signup';
     return new Promise(() => {});
   }

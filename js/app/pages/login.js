@@ -45,7 +45,7 @@ function finish() {
   const to = sessionStorage.getItem('login_redirect') || 'my-learning.html';
   sessionStorage.removeItem('login_redirect');
   // Only ever return to a page on this site.
-  location.href = /^[a-z0-9-]+\.html(\?.*)?$/i.test(to) ? to : 'my-learning.html';
+  location.href = /^[a-z0-9-]+(\.html)?(\?.*)?$/i.test(to) ? to : 'my-learning.html';
 }
 
 function authMessage(err) {
