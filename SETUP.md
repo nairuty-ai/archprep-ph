@@ -6,6 +6,7 @@ Follow every step in order. You can stop and come back anytime.
 **Owner accounts bootstrapped as admins:**
 - `rehinaneel@gmail.com`
 - `nairutya.84@gmail.com`
+- `nairutya.iitp@gmail.com`
 
 ---
 
@@ -49,42 +50,24 @@ Keep this tab open.
 
 ## Part 2 — Database migrations
 
-You need to run 12 migration files in exact order. Open **SQL Editor** in your Supabase dashboard (left sidebar).
+Open **SQL Editor** in your Supabase dashboard. Each step below is one file:
+open it in the editor here, copy everything, paste into a **New query**, click **Run**.
 
-For each file below, click **New query**, paste the entire file content, click **Run**:
+| Step | File | What it does |
+|---|---|---|
+| 1 | `supabase/scripts/00_status.sql` | Read-only: shows which of the 12 migrations are applied |
+| 2 | `supabase/scripts/01_reset.sql` | **Wipes** all ArchPrep tables (test data only!) — skip on a brand-new project |
+| 3 | `supabase/scripts/02_all_migrations.sql` | All 12 migrations in one transaction — any error rolls everything back |
+| 4 | `supabase/verify-schema.sql` | Read-only: 280 security/schema checks, should end `ALL CHECKS PASSED` |
 
-| Order | File |
-|---|---|
-| 1 | `supabase/migrations/0001_schema_core.sql` |
-| 2 | `supabase/migrations/0002_schema_money.sql` |
-| 3 | `supabase/migrations/0003_functions_triggers.sql` |
-| 4 | `supabase/migrations/0004_settings_seed.sql` |
-| 5 | `supabase/migrations/0005_rls_baseline.sql` |
-| 6 | `supabase/migrations/0006_rls_questions_lockdown.sql` |
-| 7 | `supabase/migrations/0007_rls_profiles.sql` |
-| 8 | `supabase/migrations/0008_rls_catalog.sql` |
-| 9 | `supabase/migrations/0009_rls_owner_scoped.sql` |
-| 10 | `supabase/migrations/0010_rls_settings.sql` |
-| 11 | `supabase/migrations/0011_fn_fulfil_payment.sql` |
-| 12 | `supabase/migrations/0012_fn_refund_fail_payment.sql` |
+`02_all_migrations.sql` is generated from `supabase/migrations/0001…0012` —
+after changing a migration, regenerate it with `bash supabase/scripts/build_all.sh`.
 
-> **Tip:** If a migration fails, do not skip it — fix the error and re-run before proceeding.
+### 2.1 Admin accounts
 
-### 2.1 Bootstrap admin accounts
-
-After all migrations run, go to **SQL Editor** and run:
-
-```sql
--- The owner emails. These profiles are created automatically on first sign-in;
--- this query marks them as admin once they exist.
--- Run this AFTER both owners have signed in at least once.
-UPDATE profiles SET is_admin = true
-WHERE email IN ('rehinaneel@gmail.com', 'nairutya.84@gmail.com');
-```
-
-> The `admin_bootstrap_emails` table (created in migration 0001) is also checked
-> during profile creation — so if you run the migration before signing in, the
-> trigger will automatically set `is_admin = true` when those emails first sign in.
+Nothing to do by hand. Emails listed in `admin_bootstrap_emails` (migration 0001)
+become admins automatically on first sign-in, and step 3 backfills profiles for
+accounts that already signed in.
 
 ---
 

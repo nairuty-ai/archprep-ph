@@ -59,7 +59,7 @@ create table public.admin_bootstrap_emails (
 );
 
 insert into public.admin_bootstrap_emails (email)
-values ('rehinaneel@gmail.com'), ('nairutya.84@gmail.com')
+values ('rehinaneel@gmail.com'), ('nairutya.84@gmail.com'), ('nairutya.iitp@gmail.com')
 on conflict (email) do nothing;
 
 -- Requirement 26.1 for profiles that already exist when this migration runs.

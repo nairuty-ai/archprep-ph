@@ -504,23 +504,24 @@ begin
   -- anon, authenticated, or PUBLIC, so a table or function added later arrives
   -- with no client privilege attached. This is what makes 0011+ safe by
   -- default rather than safe by remembering.
-  -- A FAIL here names the owning role of the surviving default. 0005's ALTER
-  -- DEFAULT PRIVILEGES applies only to objects created by the role that ran the
-  -- migration (postgres). If the reported owner is another role — on Supabase,
-  -- usually supabase_admin — repeat the four revokes from 0005 section 1 with
-  -- FOR ROLE <that role>.
+  -- 0005's ALTER DEFAULT PRIVILEGES applies only to objects created by the role
+  -- that ran the migration (postgres), so only that role's defaults are checked.
+  -- supabase_admin's defaults still grant to anon/authenticated, but postgres is
+  -- not a member of supabase_admin and cannot revoke them ("must be member of
+  -- role"); every migration object is created by postgres, so they never apply.
   select coalesce(string_agg(
            'owner=' || da.defaclrole::regrole::text
-             || ' objtype=' || da.defaclobjtype
+             || ' objtype=' || da.defaclobjtype::text
              || ' grantee=' || a.grantee::regrole::text
              || ' priv=' || a.privilege_type,
-           ', ' order by da.defaclrole::regrole::text || da.defaclobjtype || a.privilege_type),
+           ', ' order by da.defaclrole::regrole::text || da.defaclobjtype::text || a.privilege_type),
          '(none)')
     into v_actual
     from pg_default_acl da
     join pg_namespace n on n.oid = da.defaclnamespace
     cross join lateral aclexplode(da.defaclacl) a
    where n.nspname = 'public'
+     and da.defaclrole = current_user::regrole
      and (a.grantee = 0
        or a.grantee = to_regrole('anon')::oid
        or a.grantee = to_regrole('authenticated')::oid);
@@ -609,7 +610,7 @@ begin
   select case when count(*) = 1 then 'present' else 'MISSING' end into v_actual
     from pg_constraint con join pg_class c on c.oid = con.conrelid
    where c.relname = 'referrals' and con.contype = 'u'
-     and (select array_agg(att.attname order by att.attname)
+     and (select array_agg(att.attname::text order by att.attname)
             from pg_attribute att
            where att.attrelid = con.conrelid and att.attnum = any (con.conkey)) = array['order_id'];
   perform pg_temp.chk('J. idempotency', 'unique (order_id) on referrals',
