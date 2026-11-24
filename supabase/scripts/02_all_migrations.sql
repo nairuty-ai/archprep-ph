@@ -2667,6 +2667,31 @@ drop table public.quiz_attempts;
 --   payouts         (was payout_requests)
 -- HitPay columns are dropped: PayMongo replaces HitPay.
 
+-- Databases built from an earlier draft of 0002 name the HitPay columns
+-- provider_payment_id / provider_reference (index orders_provider_payment_id_key).
+-- Bring them to the 0002 names first so the rest of this file applies to both.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'orders'
+                and column_name = 'provider_payment_id')
+     and not exists (select 1 from information_schema.columns
+                      where table_schema = 'public' and table_name = 'orders'
+                        and column_name = 'hitpay_payment_id') then
+    alter table public.orders rename column provider_payment_id to hitpay_payment_id;
+    alter table public.orders rename column provider_reference to hitpay_reference;
+    alter index if exists public.orders_provider_payment_id_key rename to orders_hitpay_payment_id_key;
+  end if;
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'payment_incidents'
+                and column_name = 'provider_payment_id')
+     and not exists (select 1 from information_schema.columns
+                      where table_schema = 'public' and table_name = 'payment_incidents'
+                        and column_name = 'hitpay_payment_id') then
+    alter table public.payment_incidents rename column provider_payment_id to hitpay_payment_id;
+  end if;
+end $$;
+
 -- The v1 payment functions read the columns replaced below; the v2 functions
 -- (0020) replace them.
 do $$
