@@ -29,7 +29,8 @@ let timer = null;
 
 function show(step) {
   for (const [name, form] of Object.entries(steps)) form.hidden = name !== step;
-  const focus = { email: '#email', code: '#otp input', signup: '#display-name' }[step];
+  const codeTarget = $('#code-fields').hidden ? '#change-email' : '#otp input';
+  const focus = { email: '#email', code: codeTarget, signup: '#display-name' }[step];
   $(focus, steps[step])?.focus();
 }
 
@@ -148,7 +149,7 @@ function startResendTimer() {
   clearInterval(timer);
   btn.disabled = true;
   const tick = () => {
-    btn.textContent = left > 0 ? `Resend in 0:${String(left).padStart(2, '0')}` : 'Resend code';
+    btn.textContent = left > 0 ? `Resend in 0:${String(left).padStart(2, '0')}` : 'Resend email';
     btn.disabled = left > 0;
     if (left-- <= 0) clearInterval(timer);
   };
@@ -243,8 +244,15 @@ const linkError = new URLSearchParams(location.hash.slice(1)).get('error_descrip
 
 // mountShell waits for the Supabase client to read a login link's session
 // from the fragment; only then is it safe to tidy the address bar.
-const { user } = await mountShell({});
+const { user, settings } = await mountShell({});
 if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+
+// Until the email template carries {{ .Token }} (needs custom SMTP on the
+// free plan) the email has only a link, so step 2 hides the code boxes.
+if (settings.login_email_code !== 'on') {
+  for (const id of ['#code-hint', '#code-fields', '#verify-btn']) $(id).hidden = true;
+  $('#link-hint').hidden = false;
+}
 $('#login-reason').textContent = REASONS[param('reason')] || 'Enter your email. We’ll send you a login link.';
 
 if (user) {

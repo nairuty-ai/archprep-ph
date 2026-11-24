@@ -32,8 +32,9 @@
     <!-- Step 2: code -->
     <form class="auth-card" id="step-code" novalidate hidden>
       <h1>Check your email</h1>
-      <p class="lead">We sent a login email to <strong id="sent-to"></strong>. Click the link in it, or enter the 6-digit code if the email shows one.</p>
-      <fieldset style="border:0;padding:0;margin:0">
+      <p class="lead">We sent a login email to <strong id="sent-to"></strong>. <span id="code-hint">Enter the 6-digit code from it, or click the link in it.</span></p>
+      <p class="lead" id="link-hint" hidden>Click <strong>Sign in</strong> in that email to continue. The link works once and expires in 10 minutes. You can close this tab afterwards.</p>
+      <fieldset id="code-fields" style="border:0;padding:0;margin:0">
         <legend class="sr-only">6-digit code</legend>
         <div class="otp" id="otp"></div>
       </fieldset>
