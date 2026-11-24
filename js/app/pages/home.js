@@ -3,6 +3,7 @@
 import { el, $, peso, formatDate, getCatalog, SUBJECTS, TYPE_LABEL } from '../core.js';
 import { mountShell } from '../shell.js';
 import { courseCard } from '../ui.js';
+import { REVIEWS } from '../reviews.js';
 
 const DEFAULT_PRICE = { material: 49, quiz: 19, mock: 49, free: 0 };
 
@@ -60,3 +61,24 @@ $('#plan-grid').replaceChildren(...plans.map(([name, price, desc, access, featur
     el('div', { class: 'price', text: price === 'Free' ? '₱0' : price }),
     el('div', { class: 'desc', text: desc }),
     el('div', { class: 'access', text: access }))));
+
+function stars(rating) {
+  return el('span', { class: 'row gap-6' },
+    el('span', { class: 'rating', text: '★★★★★', attrs: { role: 'img', 'aria-label': `${rating} out of 5 stars` } },
+      el('span', { text: '★★★★★', style: `width:${(rating / 5) * 100}%`, attrs: { 'aria-hidden': 'true' } })),
+    el('span', { class: 'rating-num', text: rating.toFixed(1), attrs: { 'aria-hidden': 'true' } }));
+}
+
+function reviewCard(r, hidden) {
+  return el('figure', { class: 'card quote', attrs: { 'aria-hidden': hidden ? 'true' : null } },
+    stars(r.rating),
+    el('blockquote', { style: 'margin:0' }, el('p', { text: `“${r.quote}”` })),
+    el('figcaption', { style: 'margin-top:auto' },
+      el('strong', { text: r.name }),
+      el('div', { class: 'small muted', text: r.meta })));
+}
+
+// The second copy makes the loop seamless; screen readers get the list once.
+$('#reviews').replaceChildren(el('div', { class: 'marquee-track' },
+  ...REVIEWS.map((r) => reviewCard(r, false)),
+  ...REVIEWS.map((r) => reviewCard(r, true))));

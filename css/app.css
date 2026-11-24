@@ -363,13 +363,33 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .plan .desc { font-size: 14px; line-height: 1.5; opacity: .85; }
 .plan .access { font-size: 12px; font-weight: 700; opacity: .7; }
 .plan--featured { background: var(--navy); color: #fff; border-color: var(--navy); }
-.quote-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .quote { display: flex; flex-direction: column; gap: 12px; padding: 22px; margin: 0; }
 .quote p { font-size: 16px; line-height: 1.55; }
 
+/* Reviews strip: two copies of the list slide left forever; pauses on hover
+   or keyboard focus, and becomes a plain scroller with reduced motion. */
+.reviews { padding-left: 0; padding-right: 0; }
+.reviews .section-title { padding: 0 64px; }
+.marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+}
+.marquee-track { display: flex; gap: 20px; width: max-content; padding: 4px 0; animation: marquee 70s linear infinite; }
+.marquee:hover .marquee-track, .marquee:focus-within .marquee-track { animation-play-state: paused; }
+.marquee .quote { flex: none; width: 320px; }
+@keyframes marquee { to { transform: translateX(calc(-50% - 10px)); } }
+@media (prefers-reduced-motion: reduce) {
+  .marquee { overflow-x: auto; -webkit-mask-image: none; mask-image: none; padding: 0 16px; }
+  .marquee-track { animation: none; }
+  .marquee-track > [aria-hidden="true"] { display: none; }
+}
+.rating { position: relative; display: inline-block; color: var(--border-strong); font-size: 16px; line-height: 1; }
+.rating span { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--star); }
+.rating-num { font-weight: 700; font-size: 13px; color: var(--star-num); }
+
 @media (max-width: 1000px) {
   .course-grid, .plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .quote-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   .hero { grid-template-columns: 1fr; min-height: 0; }
@@ -382,6 +402,8 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
   .subject-grid { grid-template-columns: 1fr; }
   .course-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
   .plan-grid { grid-template-columns: 1fr; }
+  .reviews .section-title { padding: 0 16px; }
+  .marquee .quote { width: 280px; }
 }
 
 /* ---------------------------------------------------------------------------
