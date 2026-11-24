@@ -25,14 +25,14 @@
         <input class="input" id="email" name="email" type="email" autocomplete="email" inputmode="email" required />
         <p class="field-error" id="email-error" role="alert" hidden></p>
       </div>
-      <button class="btn btn--primary btn--block" type="submit" id="send-btn">Send 6-digit code</button>
-      <p class="small muted" style="line-height:1.5">No password. New here? We’ll create your account. For your security we never keep you signed in: each visit needs a new email code.</p>
+      <button class="btn btn--primary btn--block" type="submit" id="send-btn">Send login email</button>
+      <p class="small muted" style="line-height:1.5">No password. New here? We’ll create your account. For your security we never keep you signed in: each visit needs a new login email.</p>
     </form>
 
     <!-- Step 2: code -->
     <form class="auth-card" id="step-code" novalidate hidden>
-      <h1>Enter your code</h1>
-      <p class="lead">We sent a 6-digit code to <strong id="sent-to"></strong>.</p>
+      <h1>Check your email</h1>
+      <p class="lead">We sent a login email to <strong id="sent-to"></strong>. Click the link in it, or enter the 6-digit code if the email shows one.</p>
       <fieldset style="border:0;padding:0;margin:0">
         <legend class="sr-only">6-digit code</legend>
         <div class="otp" id="otp"></div>

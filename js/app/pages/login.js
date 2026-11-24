@@ -1,8 +1,11 @@
-/* Login (email OTP only) and first-login signup (BACKEND_RULES.md §3).
+/* Login (email only) and first-login signup (BACKEND_RULES.md §3).
  *
- * The code is sent and verified with Supabase Auth email OTP. The OTP limits,
- * admin allowlist and one-active-session check move behind the auth Edge
- * Functions in Phase 3; this page keeps the same three steps.
+ * One Supabase Auth email does both: it carries a login link and, once the
+ * email template shows {{ .Token }} (needs custom SMTP on the free plan), a
+ * 6-digit code. The link lands back on this page with the session in the URL
+ * fragment; the code is typed into step 2. The OTP limits, admin allowlist
+ * and one-active-session check move behind the auth Edge Functions in
+ * Phase 3; this page keeps the same three steps.
  */
 
 import { supabase, el, $, $$, param, callFn, getProfile } from '../core.js';
@@ -41,8 +44,14 @@ function busy(btn, on, label) {
   if (label) btn.textContent = label;
 }
 
+// Where to go after login. A login link usually opens in a new tab, which
+// has its own sessionStorage, so the target also travels in ?next=.
+function returnTarget() {
+  return param('next') || sessionStorage.getItem('login_redirect') || 'my-learning.html';
+}
+
 function finish() {
-  const to = sessionStorage.getItem('login_redirect') || 'my-learning.html';
+  const to = returnTarget();
   sessionStorage.removeItem('login_redirect');
   // Only ever return to a page on this site.
   location.href = /^[a-z0-9-]+(\.html)?(\?.*)?$/i.test(to) ? to : 'my-learning.html';
@@ -52,12 +61,20 @@ function authMessage(err) {
   const status = err?.status;
   const msg = String(err?.message || '').toLowerCase();
   if (status === 429 || msg.includes('rate') || msg.includes('security purposes')) {
-    return 'Too many codes requested. Please wait a minute and try again.';
+    return 'Too many login emails requested. Please wait a few minutes and try again.';
   }
   if (msg.includes('expired') || msg.includes('invalid') || msg.includes('token')) {
     return 'That code is wrong or has expired. Check the email or request a new code.';
   }
   return 'Something went wrong. Please try again.';
+}
+
+function sendLoginEmail(address) {
+  const back = `${location.origin}${location.pathname}?next=${encodeURIComponent(returnTarget())}`;
+  return supabase.auth.signInWithOtp({
+    email: address,
+    options: { shouldCreateUser: true, emailRedirectTo: back },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -73,8 +90,8 @@ steps.email.addEventListener('submit', async (e) => {
   setError('#email-error', '');
   const btn = $('#send-btn');
   busy(btn, true, 'Sending…');
-  const { error } = await supabase.auth.signInWithOtp({ email: value, options: { shouldCreateUser: true } });
-  busy(btn, false, 'Send 6-digit code');
+  const { error } = await sendLoginEmail(value);
+  busy(btn, false, 'Send login email');
   if (error) {
     setError('#email-error', authMessage(error));
     return;
@@ -140,7 +157,7 @@ function startResendTimer() {
 }
 
 $('#resend').addEventListener('click', async () => {
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+  const { error } = await sendLoginEmail(email);
   if (error) { setError('#code-error', authMessage(error)); return; }
   setError('#code-error', '');
   startResendTimer();
@@ -221,11 +238,18 @@ steps.signup.addEventListener('submit', async (e) => {
 // ---------------------------------------------------------------------------
 // Entry
 // ---------------------------------------------------------------------------
+// A used or expired login link comes back with the error in the fragment.
+const linkError = new URLSearchParams(location.hash.slice(1)).get('error_description');
+
+// mountShell waits for the Supabase client to read a login link's session
+// from the fragment; only then is it safe to tidy the address bar.
 const { user } = await mountShell({});
-$('#login-reason').textContent = REASONS[param('reason')] || REASONS[''] || 'Enter your email. We’ll send you a code.';
+if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+$('#login-reason').textContent = REASONS[param('reason')] || 'Enter your email. We’ll send you a login link.';
 
 if (user) {
   await afterLogin(user);
 } else {
   show('email');
+  if (linkError) setError('#email-error', 'That login link has expired or was already used. Enter your email to get a new one.');
 }

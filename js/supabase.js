@@ -25,7 +25,11 @@ export const supabase = createClient(
       persistSession:       true,
       storage:              window.sessionStorage,
       autoRefreshToken:     true,
-      detectSessionInUrl:   false,
+      // Login links from the email land on login.html with the session in
+      // the URL fragment. Implicit flow, because the link usually opens in a
+      // new tab, which has its own sessionStorage (PKCE would lose its verifier).
+      detectSessionInUrl:   true,
+      flowType:             'implicit',
       storageKey:           'arkiprep-session',
     },
   },
