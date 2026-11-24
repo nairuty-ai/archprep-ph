@@ -73,9 +73,7 @@ function reviewCard(r, hidden) {
   return el('figure', { class: 'card quote', attrs: { 'aria-hidden': hidden ? 'true' : null } },
     stars(r.rating),
     el('blockquote', { style: 'margin:0' }, el('p', { text: `“${r.quote}”` })),
-    el('figcaption', { style: 'margin-top:auto' },
-      el('strong', { text: r.name }),
-      el('div', { class: 'small muted', text: r.meta })));
+    el('figcaption', { class: 'mono', style: 'margin-top:auto;font-weight:600;font-size:14px', text: r.user }));
 }
 
 // The second copy makes the loop seamless; screen readers get the list once.
