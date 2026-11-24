@@ -182,7 +182,7 @@ h1, h2, h3, p { margin: 0; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label, .field .label { font-size: 14px; font-weight: 700; }
 .field .hint { font-size: 12px; color: var(--text-3); }
-.field .req { color: var(--danger-text); font-size: 12px; font-weight: 700; }
+.req { color: var(--danger-text); font-size: 12px; font-weight: 700; }
 .input {
   width: 100%; min-height: 48px; padding: 12px 14px;
   border: 1px solid var(--ink); border-radius: var(--r-btn);
@@ -540,4 +540,24 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 100;
   background: var(--ink); color: #fff; padding: 12px 18px; border-radius: var(--r-option);
   font-size: 14px; font-weight: 600; box-shadow: var(--shadow-float); max-width: calc(100% - 32px);
+}
+
+/* ---------------------------------------------------------------------------
+ * Work with us
+ * ------------------------------------------------------------------------- */
+.careers { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 48px; align-items: start; }
+.lead-text { font-size: 17px; line-height: 1.6; color: var(--text-2); }
+.perks { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.perks li { display: flex; flex-direction: column; gap: 2px; padding-left: 16px; border-left: 3px solid var(--primary-soft); }
+.perks span { font-size: 14px; color: var(--text-3); }
+.careers-card { padding: 24px; }
+textarea.input { min-height: 88px; resize: vertical; line-height: 1.5; }
+select.input { appearance: auto; }
+.file-input { padding: 10px 12px; font-size: 14px; }
+.state-icon-ok {
+  width: 48px; height: 48px; border-radius: 50%; background: var(--success); color: #fff;
+  font-size: 26px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+}
+@media (max-width: 900px) {
+  .careers { grid-template-columns: 1fr; gap: 28px; }
 }

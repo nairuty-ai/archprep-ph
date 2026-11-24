@@ -1,5 +1,5 @@
 -- verify-schema.sql
--- Post-apply verification for the v2 schema (migrations 0001-0022).
+-- Post-apply verification for the v2 schema (migrations 0001-0024).
 --
 -- Read-only apart from objects in pg_temp, so it is safe to run against
 -- staging or production:
@@ -9,7 +9,7 @@
 -- row before it says ALL CHECKS PASSED).
 --
 -- What it asserts:
---   A. The 26 v2 tables exist, and no extra table snuck into schema public
+--   A. The 27 v2 tables exist, and no extra table snuck into schema public
 --   B. RLS enabled on every table; FORCE RLS on the identity/money tables
 --   C. Only the two remaining enum types
 --   D. questions: zero policies and zero client grants (answer keys)
@@ -65,7 +65,7 @@ create or replace function pg_temp.v2_tables() returns text[] language sql immut
   select array[
     'admins','attempt_answers','attempts','audit_log','auth_events','auth_locks',
     'balance_ledger','bank_deposits','consents','coupon_reservations','coupons',
-    'enrollments','incidents','issues','orders','outbox','pack_quizzes',
+    'enrollments','incidents','issues','job_interests','orders','outbox','pack_quizzes',
     'payment_events','payouts','products','profiles','questions','quizzes',
     'referrals','sessions','settings']::text[];
 $$;
@@ -78,7 +78,7 @@ declare
   t text;
   v_actual text;
   v_force constant text[] := array['admins','audit_log','balance_ledger','bank_deposits',
-    'enrollments','orders','payouts','profiles','referrals','sessions'];
+    'enrollments','job_interests','orders','payouts','profiles','referrals','sessions'];
 begin
   foreach t in array pg_temp.v2_tables() loop
     select case when count(*) = 1 then 'present' else 'MISSING' end into v_actual
@@ -192,7 +192,9 @@ begin
       ('outbox',          'authenticated', '(none)'),
       ('auth_events',     'authenticated', '(none)'),
       ('auth_locks',      'authenticated', '(none)'),
-      ('coupon_reservations', 'authenticated', '(none)')
+      ('coupon_reservations', 'authenticated', '(none)'),
+      ('job_interests',   'anon',          '(none)'),
+      ('job_interests',   'authenticated', '(none)')
     ) v(tbl, role, expected)
   loop
     perform pg_temp.chk('F. select columns', format('%s readable by %s', r.tbl, r.role),
@@ -277,7 +279,8 @@ begin
       ('sessions',        'sessions_one_active_key'),
       ('attempts',        'attempts_one_open_key'),
       ('coupons',         'coupons_code_key'),
-      ('outbox',          'outbox_dedupe_key_key')
+      ('outbox',          'outbox_dedupe_key_key'),
+      ('job_interests',   'job_interests_email_key')
     ) v(tbl, idx)
   loop
     perform pg_temp.chk('J. idempotency', format('unique %s on %s', r.idx, r.tbl), 'present',

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work with us — ArkiPrep</title>
+  <meta name="description" content="Write reviewers and board-type questions for Filipino architecture graduates. Leave your email to hear when a role opens at ArkiPrep." />
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/app.css" />
+  <script src="config.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main id="main">
+    <div class="wrap wrap--mid page-pad careers">
+      <section class="stack gap-16" aria-labelledby="careers-title">
+        <span class="eyebrow">Work with us</span>
+        <h1 class="page-title" id="careers-title">Help Filipino architecture graduates pass the ALE.</h1>
+        <p class="lead-text">We work with licensed architects and subject experts who write reviewers, board-type questions and explanations for Subjects A and B. The work is remote and part-time.</p>
+        <ul class="perks">
+          <li><strong>Question writers</strong><span>Board-type items with clear explanations.</span></li>
+          <li><strong>Reviewer writers</strong><span>Subject reviewers and one-page summary tables.</span></li>
+          <li><strong>Faculty</strong><span>Licensed architects who check content for accuracy.</span></li>
+        </ul>
+      </section>
+
+      <section class="card careers-card stack gap-16" aria-labelledby="notify-title">
+        <div class="banner banner--warn" role="status"><strong>No open positions right now.</strong> Leave your email and we’ll tell you when a role opens.</div>
+
+        <form class="stack gap-16" id="notify-form" novalidate>
+          <h2 id="notify-title" style="font-size:20px;font-weight:800">Get notified about openings</h2>
+          <div class="field">
+            <label for="email">Email <span class="req">Required</span></label>
+            <input class="input" id="email" name="email" type="email" autocomplete="email" required maxlength="254" />
+          </div>
+          <div class="field">
+            <label for="name">Name <span class="hint">(optional)</span></label>
+            <input class="input input--soft" id="name" name="name" type="text" autocomplete="name" maxlength="100" />
+          </div>
+          <div class="field">
+            <label for="area">What would you like to do? <span class="hint">(optional)</span></label>
+            <select class="input input--soft" id="area" name="area">
+              <option value="">Choose one</option>
+              <option value="question_writer">Write board-type questions</option>
+              <option value="reviewer_writer">Write reviewers</option>
+              <option value="faculty">Check content (licensed architect)</option>
+              <option value="support">Student support</option>
+              <option value="other">Something else</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="message">Anything we should know? <span class="hint">(optional)</span></label>
+            <textarea class="input input--soft" id="message" name="message" rows="3" maxlength="2000" placeholder="e.g. licensed since 2019, strong in Building Technology"></textarea>
+          </div>
+          <div class="field">
+            <label for="resume">Résumé <span class="hint">(optional · PDF, DOC or DOCX, up to 5 MB)</span></label>
+            <input class="input input--soft file-input" id="resume" name="resume" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+          </div>
+          <label class="check"><input type="checkbox" name="consent" value="yes" required /><span class="box"></span>
+            <span>I agree that ArkiPrep keeps my email and résumé to contact me about openings, as described in the <a href="faq.html#privacy" target="_blank" rel="noopener">Privacy Notice</a>. I can ask for them to be deleted anytime. <span class="req">Required</span></span></label>
+          <p class="field-error" id="form-error" role="alert" hidden></p>
+          <button class="btn btn--primary" type="submit" id="submit-btn">Notify me</button>
+        </form>
+
+        <div class="stack gap-12" id="done" hidden tabindex="-1">
+          <div class="state-icon-ok" aria-hidden="true">✓</div>
+          <h2 style="font-size:22px;font-weight:800">You’re on the list</h2>
+          <p class="lead-text" id="done-text">We’ll email you when a role opens.</p>
+          <a class="btn btn--secondary" href="index.html" style="align-self:start">Back to home</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+  <script type="module" src="js/app/pages/careers.js"></script>
+</body>
+</html>

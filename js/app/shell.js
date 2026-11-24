@@ -99,6 +99,7 @@ function footer() {
       el('a', { href: 'faq.html#terms', text: 'Terms & refund policy' }),
       el('a', { href: 'faq.html#privacy', text: 'Privacy' }),
       el('a', { href: 'faq.html#contact', text: 'Contact' }),
+      el('a', { href: 'careers.html', text: 'Work with us' }),
       el('a', { href: 'admin.html', text: 'Admin' })),
     el('div', { class: 'pay-badges', attrs: { 'aria-label': 'Payment methods' } },
       el('span', { text: 'GCash' }), el('span', { text: 'Maya' }),

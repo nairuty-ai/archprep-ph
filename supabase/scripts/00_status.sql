@@ -32,7 +32,8 @@ with checks(migration, applied) as (
   ('0020_fn_v2_orders',           exists (select 1 from pg_proc where proname = 'fulfil_order')),
   ('0021_fn_v2_learning',         exists (select 1 from pg_proc where proname = 'start_attempt')),
   ('0022_fn_v2_payouts_jobs',     exists (select 1 from pg_proc where proname = 'request_payout')),
-  ('0023_setting_login_email_code', exists (select 1 from public.settings where key = 'login_email_code'))
+  ('0023_setting_login_email_code', exists (select 1 from public.settings where key = 'login_email_code')),
+  ('0024_job_interests',          to_regclass('public.job_interests') is not null)
 )
 select migration, case when applied then 'yes' else '— NOT APPLIED' end as applied
 from checks

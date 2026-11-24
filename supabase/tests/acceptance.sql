@@ -319,6 +319,30 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- Work with us: one entry per email, 5 per IP per hour
+-- ---------------------------------------------------------------------------
+do $$
+declare r1 jsonb; r2 jsonb; i int;
+begin
+  r1 := public.job_interest_submit('  Writer@Test.PH ', 'Ana', 'question_writer', null, '1.2.3.4');
+  r2 := public.job_interest_submit('writer@test.ph', null, null, 'Licensed since 2019', '1.2.3.4');
+  perform pg_temp.check('jobs. same email updates the one entry',
+    (r1->>'new')::boolean and not (r2->>'new')::boolean and r1->>'id' = r2->>'id'
+    and (select name = 'Ana' and message = 'Licensed since 2019' from public.job_interests where email = 'writer@test.ph'));
+  perform pg_temp.check('jobs. invalid email refused',
+    pg_temp.try($q$select public.job_interest_submit('not-an-email', null, null, null, '9.9.9.9')$q$) = 'EMAIL_INVALID');
+  for i in 1..4 loop
+    perform public.job_interest_submit('spam' || i || '@test.ph', null, null, null, '5.5.5.5');
+  end loop;
+  perform pg_temp.check('jobs. 6th submission from one IP within an hour refused',
+    public.job_interest_submit('spam5@test.ph', null, null, null, '5.5.5.5') is not null
+    and pg_temp.try($q$select public.job_interest_submit('spam6@test.ph', null, null, null, '5.5.5.5')$q$) = 'RATE_LIMITED');
+  perform pg_temp.check('jobs. not readable by clients',
+    not has_table_privilege('anon', 'public.job_interests', 'select')
+    and not has_function_privilege('anon', 'public.job_interest_submit(text,text,text,text,text)', 'execute'));
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Security spot checks
 -- ---------------------------------------------------------------------------
 select pg_temp.check('sec. leaderboard callable by anon, shows display names only',

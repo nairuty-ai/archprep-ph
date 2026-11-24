@@ -113,3 +113,6 @@ verify_jwt = true
 
 [functions.complete-signup]
 verify_jwt = true
+
+[functions.careers-interest]
+verify_jwt = false

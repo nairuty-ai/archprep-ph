@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Page not found — ArkiPrep</title>
+  <meta name="robots" content="noindex" />
+  <!-- Served for any unknown URL at any depth: resolve the shell's relative
+       links (catalog.html, …) from the site root. -->
+  <base href="/" />
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <script src="/config.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main id="main">
+    <div class="wrap wrap--narrow page-pad">
+      <div class="state">
+        <div class="icon" aria-hidden="true">?</div>
+        <h1 style="font-weight:800;font-size:24px">Page not found</h1>
+        <p>This page may have moved, or the link is wrong.</p>
+        <div class="row gap-8 wrap-flex">
+          <a class="btn btn--primary btn--sm" href="/catalog.html">Browse courses</a>
+          <a class="btn btn--secondary btn--sm" href="/index.html">Home</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+  <script type="module">
+    import { mountShell } from '/js/app/shell.js';
+    mountShell({});
+  </script>
+</body>
+</html>
