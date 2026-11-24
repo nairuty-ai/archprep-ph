@@ -77,6 +77,7 @@ function reviewCard(r, hidden) {
 }
 
 // The second copy makes the loop seamless; screen readers get the list once.
-$('#reviews').replaceChildren(el('div', { class: 'marquee-track' },
+// About 6.5s per review keeps the same reading speed however long the list.
+$('#reviews').replaceChildren(el('div', { class: 'marquee-track', style: `animation-duration:${REVIEWS.length * 6.5}s` },
   ...REVIEWS.map((r) => reviewCard(r, false)),
   ...REVIEWS.map((r) => reviewCard(r, true))));
