@@ -1,5 +1,5 @@
 -- verify-schema.sql
--- Post-apply verification for the v2 schema (migrations 0001-0024).
+-- Post-apply verification for the v2 schema (migrations 0001-0025).
 --
 -- Read-only apart from objects in pg_temp, so it is safe to run against
 -- staging or production:
@@ -64,8 +64,8 @@ $$;
 create or replace function pg_temp.v2_tables() returns text[] language sql immutable as $$
   select array[
     'admins','attempt_answers','attempts','audit_log','auth_events','auth_locks',
-    'balance_ledger','bank_deposits','consents','coupon_reservations','coupons',
-    'enrollments','incidents','issues','job_interests','orders','outbox','pack_quizzes',
+    'balance_ledger','bank_deposits','consents','content_page_versions','content_pages',
+    'coupon_reservations','coupons','enrollments','incidents','issues','job_interests','orders','outbox','pack_quizzes',
     'payment_events','payouts','products','profiles','questions','quizzes',
     'referrals','sessions','settings']::text[];
 $$;
@@ -78,7 +78,7 @@ declare
   t text;
   v_actual text;
   v_force constant text[] := array['admins','audit_log','balance_ledger','bank_deposits',
-    'enrollments','job_interests','orders','payouts','profiles','referrals','sessions'];
+    'content_page_versions','content_pages','enrollments','job_interests','orders','payouts','profiles','referrals','sessions'];
 begin
   foreach t in array pg_temp.v2_tables() loop
     select case when count(*) = 1 then 'present' else 'MISSING' end into v_actual
@@ -136,6 +136,7 @@ select pg_temp.chk('E. policies', 'exact policy inventory',
   || 'balance_ledger.balance_ledger_select_own:SELECT:authenticated|'
   || 'bank_deposits.bank_deposits_select_own:SELECT:authenticated|'
   || 'consents.consents_select_own:SELECT:authenticated|'
+  || 'content_pages.content_pages_select_enabled:SELECT:anon+authenticated|'
   || 'enrollments.enrollments_select_own:SELECT:authenticated|'
   || 'issues.issues_select_own:SELECT:authenticated|'
   || 'orders.orders_select_own:SELECT:authenticated|'
@@ -194,7 +195,11 @@ begin
       ('auth_locks',      'authenticated', '(none)'),
       ('coupon_reservations', 'authenticated', '(none)'),
       ('job_interests',   'anon',          '(none)'),
-      ('job_interests',   'authenticated', '(none)')
+      ('job_interests',   'authenticated', '(none)'),
+      ('content_pages',   'anon',          null),
+      ('content_pages',   'authenticated', null),
+      ('content_page_versions', 'anon',    '(none)'),
+      ('content_page_versions', 'authenticated', '(none)')
     ) v(tbl, role, expected)
   loop
     perform pg_temp.chk('F. select columns', format('%s readable by %s', r.tbl, r.role),
@@ -250,7 +255,7 @@ begin
     'quiz_attempts','session_idle_min','answer_reveal_mode','leaderboard_mode',
     'bank_bdo','bank_bpi','bank_metrobank','bank_unionbank','bank_landbank',
     'bank_account_name','bank_sla_hours','order_ttl_online_min','order_ttl_bank_h',
-    'brand_name','announcement_banner','contact_email'] loop
+    'brand_name','announcement_banner','contact_email','content_pages_enabled','site_domain'] loop
     perform pg_temp.chk('I. settings', format('setting %s present', k), 'present',
       (select case when count(*) = 1 then 'present' else 'MISSING' end from public.settings where key = k));
   end loop;

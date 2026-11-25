@@ -1,11 +1,23 @@
 // Cloudflare Workers deploy config: the site is static files served as Worker
 // assets, no build step. Everything under the repo root is uploaded except
 // what .assetsignore lists (docs, backend, tests, tooling).
+//
+// worker/index.js runs only for the content routes (/ale-guide…), which it
+// server-renders from Supabase; every other request is served straight from
+// the static assets without invoking the Worker.
 {
   "name": "archprep-ph",
+  "main": "worker/index.js",
   "compatibility_date": "2025-09-01",
   "assets": {
     "directory": "./",
-    "not_found_handling": "404-page"
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/ale-guide", "/ale-guide/*", "/ale-guide.html"]
+  },
+  // Public values (the same ones config.js serves to every browser).
+  "vars": {
+    "SUPABASE_URL": "https://iyqzrmdcplbmopruaaah.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_s-MIj3v5ccAv_V99_-A-OQ_btGAFfSV"
   }
 }

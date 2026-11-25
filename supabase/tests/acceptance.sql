@@ -343,6 +343,64 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- Content pages (0025): hidden until the flag is on; save keeps 10 versions,
+-- restore works, every write is audited
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  v_admin uuid := '10000000-0000-0000-0000-000000000009';
+  v_n_anon int; v_ver bigint; v_audit int; r jsonb; i int;
+begin
+  perform pg_temp.check('content. both pages seeded, flag defaults off',
+    (select count(*) from public.content_pages where slug in ('ale-guide','ale-cheatsheet')) = 2
+    and (select value from public.settings where key = 'content_pages_enabled') = 'off'
+    and (select json->'calculatorPresets'->0->>'label' from public.content_pages where slug = 'ale-guide') = 'Passes');
+
+  set local role anon;
+  select count(*) into v_n_anon from public.content_pages;
+  reset role;
+  perform pg_temp.check('content. anon sees no page while the flag is off', v_n_anon = 0);
+
+  update public.settings set value = 'on' where key = 'content_pages_enabled';
+  set local role anon;
+  select count(*) into v_n_anon from public.content_pages;
+  reset role;
+  perform pg_temp.check('content. anon reads both pages once the flag is on', v_n_anon = 2);
+  update public.settings set value = 'off' where key = 'content_pages_enabled';
+
+  select count(*) into v_audit from public.audit_log where area = 'content';
+  for i in 1..12 loop
+    r := public.content_page_save('ale-cheatsheet',
+           (select json from public.content_pages where slug = 'ale-cheatsheet') || jsonb_build_object('updated', '2026-' || i),
+           v_admin, 'admin@test.ph');
+  end loop;
+  perform pg_temp.check('content. 12 saves keep only the 10 newest versions, each audited',
+    (select count(*) from public.content_page_versions where slug = 'ale-cheatsheet') = 10
+    and (select count(*) from public.audit_log where area = 'content') = v_audit + 12
+    and (select json->>'updated' from public.content_pages where slug = 'ale-cheatsheet') = '2026-12');
+
+  select id into v_ver from public.content_page_versions
+   where slug = 'ale-cheatsheet' and json->>'updated' = '2026-5';
+  r := public.content_page_restore(v_ver, v_admin, 'admin@test.ph');
+  perform pg_temp.check('content. restore brings back the version and archives the current one',
+    (select json->>'updated' from public.content_pages where slug = 'ale-cheatsheet') = '2026-5'
+    and exists (select 1 from public.content_page_versions where slug = 'ale-cheatsheet' and json->>'updated' = '2026-12')
+    and (select action from public.audit_log where area = 'content' order by id desc limit 1) = 'content_page_restored');
+
+  perform pg_temp.check('content. stale save and bad input refused',
+    pg_temp.try($q$select public.content_page_save('ale-guide', '{}'::jsonb, null, null, '2000-01-01')$q$) = 'STALE_CONTENT'
+    and pg_temp.try($q$select public.content_page_save('ale-guide', '[]'::jsonb, null, null)$q$) = 'CONTENT_INVALID'
+    and pg_temp.try($q$select public.content_page_save('nope', '{}'::jsonb, null, null)$q$) = 'CONTENT_NOT_FOUND'
+    and pg_temp.try($q$select public.content_page_restore(-1, null, null)$q$) = 'VERSION_NOT_FOUND');
+
+  perform pg_temp.check('content. no client write path',
+    not has_table_privilege('anon', 'public.content_pages', 'update')
+    and not has_table_privilege('authenticated', 'public.content_pages', 'insert')
+    and not has_table_privilege('anon', 'public.content_page_versions', 'select')
+    and not has_function_privilege('authenticated', 'public.content_page_save(text,jsonb,uuid,text,timestamptz,text,jsonb)', 'execute'));
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Security spot checks
 -- ---------------------------------------------------------------------------
 select pg_temp.check('sec. leaderboard callable by anon, shows display names only',

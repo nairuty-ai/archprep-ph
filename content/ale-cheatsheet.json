@@ -1,0 +1,786 @@
+{
+  "updated": "2026-11",
+  "keyNumbers": [
+    {
+      "value": "70%",
+      "label": "minimum weighted average"
+    },
+    {
+      "value": "50%",
+      "label": "minimum in every subject"
+    },
+    {
+      "value": "30 · 30 · 40",
+      "label": "weights of A · B · C"
+    },
+    {
+      "value": "5 · 5 · 10 h",
+      "label": "session lengths"
+    },
+    {
+      "value": "2 yrs",
+      "label": "diversified experience"
+    },
+    {
+      "value": "RA 9266",
+      "label": "Architecture Act of 2004"
+    }
+  ],
+  "tags": {
+    "A": {
+      "label": "SUBJ A",
+      "bg": "#e8ebf2",
+      "fg": "#1d2b4a"
+    },
+    "B": {
+      "label": "SUBJ B",
+      "bg": "#e3eefc",
+      "fg": "#1f4686"
+    },
+    "C": {
+      "label": "SUBJ C",
+      "bg": "#fdf1d8",
+      "fg": "#7a4b00"
+    },
+    "X": {
+      "label": "EXAM",
+      "bg": "#dcf2e6",
+      "fg": "#1f7a4f"
+    }
+  },
+  "cards": [
+    {
+      "tag": "X",
+      "type": "terms",
+      "title": "Passing & scoring",
+      "rows": [
+        {
+          "term": "Rule 1",
+          "meaning": "Weighted average ≥ 70%"
+        },
+        {
+          "term": "Rule 2",
+          "meaning": "Every subject ≥ 50%"
+        },
+        {
+          "term": "Formula",
+          "meaning": "A×.30 + B×.30 + C×.40"
+        },
+        {
+          "term": "Both rules",
+          "meaning": "Must be met together"
+        },
+        {
+          "term": "Weakest link",
+          "meaning": "A subject under 50% fails the exam outright"
+        }
+      ]
+    },
+    {
+      "tag": "X",
+      "type": "terms",
+      "title": "Schedule",
+      "rows": [
+        {
+          "term": "Day 1 AM",
+          "meaning": "Subject A · about 5 h"
+        },
+        {
+          "term": "Day 1 PM",
+          "meaning": "Subject B · about 5 h"
+        },
+        {
+          "term": "Day 2",
+          "meaning": "Subject C · about 10 h"
+        },
+        {
+          "term": "Day 2 format",
+          "meaning": "Situational design problems, multiple choice"
+        },
+        {
+          "term": "Official times",
+          "meaning": "PRC program, released per exam"
+        }
+      ]
+    },
+    {
+      "tag": "A",
+      "type": "terms",
+      "title": "Architectural history",
+      "rows": [
+        {
+          "term": "Prehistoric",
+          "meaning": "Dolmen, menhir, cromlech"
+        },
+        {
+          "term": "Greek",
+          "meaning": "Doric, Ionic, Corinthian orders"
+        },
+        {
+          "term": "Roman",
+          "meaning": "Arch, vault, dome, concrete"
+        },
+        {
+          "term": "Gothic",
+          "meaning": "Pointed arch, rib vault, flying buttress"
+        },
+        {
+          "term": "Renaissance",
+          "meaning": "Proportion and classical revival"
+        },
+        {
+          "term": "Modern",
+          "meaning": "Form follows function, new materials"
+        },
+        {
+          "term": "Philippine",
+          "meaning": "Bahay kubo, bahay na bato, Earthquake Baroque"
+        },
+        {
+          "term": "Heritage",
+          "meaning": "Preserve, conserve, restore, adapt"
+        }
+      ]
+    },
+    {
+      "tag": "A",
+      "type": "terms",
+      "title": "Design theory",
+      "rows": [
+        {
+          "term": "Vitruvian triad",
+          "meaning": "Firmness, commodity, delight"
+        },
+        {
+          "term": "Anthropometrics",
+          "meaning": "Body sizes, reach, clearances"
+        },
+        {
+          "term": "Proxemics",
+          "meaning": "Social distance; varies by culture"
+        },
+        {
+          "term": "Circulation",
+          "meaning": "Organizes how people move"
+        },
+        {
+          "term": "Tropical design",
+          "meaning": "Shade, cross-ventilation, rain cover"
+        },
+        {
+          "term": "Design process",
+          "meaning": "Turns user needs into form"
+        }
+      ]
+    },
+    {
+      "tag": "A",
+      "type": "compare",
+      "title": "Preservation vs restoration",
+      "left": {
+        "title": "Preservation",
+        "items": [
+          "Keeps what exists",
+          "Stops further decay",
+          "Minimal intervention"
+        ]
+      },
+      "right": {
+        "title": "Restoration",
+        "items": [
+          "Returns to a chosen period",
+          "May remove later additions",
+          "Needs strong evidence"
+        ]
+      },
+      "tagline": "Keep as is vs bring back as it was"
+    },
+    {
+      "tag": "A",
+      "type": "terms",
+      "title": "Planning",
+      "rows": [
+        {
+          "term": "CLUP",
+          "meaning": "Long-term land-use plan of an LGU"
+        },
+        {
+          "term": "Zoning ordinance",
+          "meaning": "Legal tool that enforces the CLUP"
+        },
+        {
+          "term": "Regional planning",
+          "meaning": "Development across several LGUs"
+        },
+        {
+          "term": "Urban design",
+          "meaning": "Shapes streets and public space"
+        },
+        {
+          "term": "Human settlements",
+          "meaning": "Housing and community services"
+        },
+        {
+          "term": "Site planning",
+          "meaning": "Arranges one property in detail"
+        }
+      ]
+    },
+    {
+      "tag": "A",
+      "type": "terms",
+      "title": "RA 9266 roles & terms",
+      "rows": [
+        {
+          "term": "PRBoA",
+          "meaning": "Regulates the practice of architecture"
+        },
+        {
+          "term": "Architect-of-record",
+          "meaning": "Responsible for the total design; signs documents"
+        },
+        {
+          "term": "Architect-in-charge of construction",
+          "meaning": "Directs and supervises construction"
+        },
+        {
+          "term": "Consulting architect",
+          "meaning": "Recognized specialist adviser"
+        },
+        {
+          "term": "Seal",
+          "meaning": "Marks professional responsibility"
+        },
+        {
+          "term": "Instruments of service",
+          "meaning": "Drawings and specs stay the architect's intellectual property"
+        },
+        {
+          "term": "Service agreement",
+          "meaning": "Written scope and fees"
+        }
+      ]
+    },
+    {
+      "tag": "A",
+      "type": "picker",
+      "title": "Which document do you need?",
+      "header": "IF YOU NEED…  →  USE",
+      "rows": [
+        {
+          "need": "Scope and fee in writing",
+          "use": "Service agreement"
+        },
+        {
+          "need": "Owner's requirements listed",
+          "use": "Architectural program"
+        },
+        {
+          "need": "A first design direction",
+          "use": "Schematic design"
+        },
+        {
+          "need": "A refined, coordinated design",
+          "use": "Design development"
+        },
+        {
+          "need": "Size, shape and location",
+          "use": "Drawings"
+        },
+        {
+          "need": "Quality of materials and work",
+          "use": "Specifications"
+        },
+        {
+          "need": "Binding construction terms",
+          "use": "Contract documents"
+        }
+      ]
+    },
+    {
+      "tag": "A",
+      "type": "compare",
+      "title": "Drawings vs specifications",
+      "left": {
+        "title": "Drawings",
+        "items": [
+          "Graphic",
+          "Size, shape, location",
+          "Quantities and relationships"
+        ]
+      },
+      "right": {
+        "title": "Specifications",
+        "items": [
+          "Written",
+          "Quality and standards",
+          "Materials and workmanship"
+        ]
+      },
+      "tagline": "Drawings show; specs describe"
+    },
+    {
+      "tag": "A",
+      "type": "terms",
+      "title": "Laws to know by number",
+      "rows": [
+        {
+          "term": "PD 1096",
+          "meaning": "National Building Code"
+        },
+        {
+          "term": "BP 344",
+          "meaning": "Accessibility Law"
+        },
+        {
+          "term": "RA 9514",
+          "meaning": "Fire Code of 2008"
+        },
+        {
+          "term": "RA 9266",
+          "meaning": "Architecture Act of 2004"
+        },
+        {
+          "term": "PD 957",
+          "meaning": "Subdivision & condominium buyers' protection"
+        },
+        {
+          "term": "BP 220",
+          "meaning": "Economic & socialized housing standards"
+        },
+        {
+          "term": "RA 7279",
+          "meaning": "Urban Development & Housing Act"
+        }
+      ]
+    },
+    {
+      "tag": "B",
+      "type": "terms",
+      "title": "Structures",
+      "rows": [
+        {
+          "term": "Equilibrium",
+          "meaning": "ΣF = 0 and ΣM = 0"
+        },
+        {
+          "term": "Stress",
+          "meaning": "Force ÷ area"
+        },
+        {
+          "term": "Strain",
+          "meaning": "Change in length ÷ original length"
+        },
+        {
+          "term": "Modulus of elasticity",
+          "meaning": "Stress ÷ strain (elastic range)"
+        },
+        {
+          "term": "Factor of safety",
+          "meaning": "Capacity ÷ working load"
+        },
+        {
+          "term": "Seismic design",
+          "meaning": "Lateral loads, ductility, regular plans"
+        },
+        {
+          "term": "NSCP",
+          "meaning": "National Structural Code of the Philippines"
+        }
+      ]
+    },
+    {
+      "tag": "B",
+      "type": "terms",
+      "title": "Materials",
+      "rows": [
+        {
+          "term": "Concrete",
+          "meaning": "Strong in compression, weak in tension"
+        },
+        {
+          "term": "Rebar",
+          "meaning": "Carries the tension in RC"
+        },
+        {
+          "term": "Structural steel",
+          "meaning": "High strength; needs fire and rust protection"
+        },
+        {
+          "term": "Timber",
+          "meaning": "Light; strength follows the grain"
+        },
+        {
+          "term": "Masonry",
+          "meaning": "Good in compression, needs reinforcement for quakes"
+        },
+        {
+          "term": "Glazing",
+          "meaning": "Light and views; watch heat gain"
+        }
+      ]
+    },
+    {
+      "tag": "B",
+      "type": "compare",
+      "title": "Waterproofing vs dampproofing",
+      "left": {
+        "title": "Waterproofing",
+        "items": [
+          "Resists water under pressure",
+          "Basements, roofs, wet areas",
+          "Membranes, coatings"
+        ]
+      },
+      "right": {
+        "title": "Dampproofing",
+        "items": [
+          "Resists moisture and vapour",
+          "Walls and slabs on grade",
+          "No hydrostatic pressure"
+        ]
+      },
+      "tagline": "Liquid water vs moisture"
+    },
+    {
+      "tag": "B",
+      "type": "terms",
+      "title": "Building utilities",
+      "rows": [
+        {
+          "term": "Plumbing",
+          "meaning": "Supply, fixtures, traps, vents"
+        },
+        {
+          "term": "Trap seal",
+          "meaning": "50–100 mm deep"
+        },
+        {
+          "term": "Sanitary drainage",
+          "meaning": "Wastewater from fixtures"
+        },
+        {
+          "term": "Storm drainage",
+          "meaning": "Rainwater from roofs and paving"
+        },
+        {
+          "term": "HVAC",
+          "meaning": "Cools, ventilates, moves air"
+        },
+        {
+          "term": "Electrical",
+          "meaning": "Service, panels, branch circuits"
+        },
+        {
+          "term": "Acoustics",
+          "meaning": "Absorption, isolation, reverberation"
+        },
+        {
+          "term": "Fire protection",
+          "meaning": "Detection, alarm, suppression"
+        }
+      ]
+    },
+    {
+      "tag": "B",
+      "type": "picker",
+      "title": "Which system handles it?",
+      "header": "PROBLEM  →  SYSTEM",
+      "rows": [
+        {
+          "need": "Fixture wastewater",
+          "use": "Sanitary drainage"
+        },
+        {
+          "need": "Roof rainwater",
+          "use": "Storm drainage"
+        },
+        {
+          "need": "Fresh air and cooling",
+          "use": "HVAC"
+        },
+        {
+          "need": "Noise between rooms",
+          "use": "Sound isolation"
+        },
+        {
+          "need": "Early smoke warning",
+          "use": "Fire detection & alarm"
+        },
+        {
+          "need": "Moving people up floors",
+          "use": "Elevators & escalators"
+        }
+      ]
+    },
+    {
+      "tag": "C",
+      "type": "picker",
+      "title": "Design-day toolkit",
+      "header": "TO FIND…  →  USE",
+      "rows": [
+        {
+          "need": "Total floor areas",
+          "use": "Space schedule"
+        },
+        {
+          "need": "Which rooms sit together",
+          "use": "Adjacency matrix"
+        },
+        {
+          "need": "How users move",
+          "use": "Bubble or flow diagram"
+        },
+        {
+          "need": "Site limits at a glance",
+          "use": "Site analysis overlay"
+        },
+        {
+          "need": "Slope and grades",
+          "use": "Contour map"
+        },
+        {
+          "need": "Sun on each facade",
+          "use": "Sun-path diagram"
+        },
+        {
+          "need": "Prevailing breeze",
+          "use": "Wind rose"
+        },
+        {
+          "need": "Solid vs open pattern",
+          "use": "Figure-ground"
+        }
+      ]
+    },
+    {
+      "tag": "C",
+      "type": "terms",
+      "title": "Development controls (PD 1096)",
+      "rows": [
+        {
+          "term": "PSO",
+          "meaning": "Percentage of site occupancy"
+        },
+        {
+          "term": "ISA",
+          "meaning": "Impervious surface area"
+        },
+        {
+          "term": "USA",
+          "meaning": "Unpaved surface area"
+        },
+        {
+          "term": "TGFA",
+          "meaning": "Total gross floor area"
+        },
+        {
+          "term": "FLAR",
+          "meaning": "Floor-lot area ratio"
+        },
+        {
+          "term": "BHL",
+          "meaning": "Building height limit"
+        },
+        {
+          "term": "Setbacks / yards",
+          "meaning": "Required open space at lot lines"
+        }
+      ]
+    },
+    {
+      "tag": "C",
+      "type": "terms",
+      "title": "Site & climate (PH)",
+      "rows": [
+        {
+          "term": "Climate",
+          "meaning": "Hot-humid tropical"
+        },
+        {
+          "term": "Amihan",
+          "meaning": "Northeast monsoon, cooler and drier"
+        },
+        {
+          "term": "Habagat",
+          "meaning": "Southwest monsoon, rainy"
+        },
+        {
+          "term": "Orientation",
+          "meaning": "Long axis east–west cuts sun on long walls"
+        },
+        {
+          "term": "Openings",
+          "meaning": "Face prevailing breeze for cross-ventilation"
+        },
+        {
+          "term": "Drainage",
+          "meaning": "Follow natural slope away from buildings"
+        }
+      ]
+    },
+    {
+      "tag": "C",
+      "type": "terms",
+      "title": "Solving a design problem",
+      "rows": [
+        {
+          "term": "1 · Read",
+          "meaning": "List requirements and constraints"
+        },
+        {
+          "term": "2 · Program",
+          "meaning": "Spaces with target areas"
+        },
+        {
+          "term": "3 · Relate",
+          "meaning": "Adjacencies and separations"
+        },
+        {
+          "term": "4 · Zone",
+          "meaning": "Public, private, service"
+        },
+        {
+          "term": "5 · Test",
+          "meaning": "Sketch quick options"
+        },
+        {
+          "term": "6 · Check",
+          "meaning": "Setbacks, PSO, egress, access"
+        },
+        {
+          "term": "7 · Answer",
+          "meaning": "Pick the option that meets all"
+        }
+      ]
+    },
+    {
+      "tag": "C",
+      "type": "compare",
+      "title": "Planning vs site planning",
+      "left": {
+        "title": "Planning",
+        "items": [
+          "City or region",
+          "Land-use frameworks",
+          "Policy and settlements"
+        ]
+      },
+      "right": {
+        "title": "Site planning",
+        "items": [
+          "One property",
+          "Buildings and open space",
+          "Access, parking, landscape"
+        ]
+      },
+      "tagline": "Big framework vs one site"
+    },
+    {
+      "tag": "X",
+      "type": "terms",
+      "title": "Eligibility",
+      "rows": [
+        {
+          "term": "Citizenship",
+          "meaning": "Filipino, or reciprocity country"
+        },
+        {
+          "term": "Character",
+          "meaning": "Good moral character"
+        },
+        {
+          "term": "Degree",
+          "meaning": "BS Architecture, recognized school"
+        },
+        {
+          "term": "Experience",
+          "meaning": "2 years diversified, certified"
+        },
+        {
+          "term": "Master's",
+          "meaning": "Credits 1 of the 2 years"
+        }
+      ]
+    },
+    {
+      "tag": "X",
+      "type": "terms",
+      "title": "Exam-day kit",
+      "rows": [
+        {
+          "term": "Documents",
+          "meaning": "Notice of Admission + valid ID"
+        },
+        {
+          "term": "Writing",
+          "meaning": "No. 2 pencils, black ballpens"
+        },
+        {
+          "term": "Calculator",
+          "meaning": "One, non-programmable, inspected"
+        },
+        {
+          "term": "Design day",
+          "meaning": "Scales, triangles, protractor"
+        },
+        {
+          "term": "Scratch",
+          "meaning": "Graphing or bond paper"
+        },
+        {
+          "term": "NBCP excerpt",
+          "meaning": "Rules VII & VIII, unmarked"
+        },
+        {
+          "term": "After",
+          "meaning": "All papers are surrendered"
+        }
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "a": "Average ≥ 70%",
+      "b": "Each subject ≥ 50%"
+    },
+    {
+      "a": "2 exam days",
+      "b": "3 graded subjects"
+    },
+    {
+      "a": "Architect-of-record",
+      "b": "Architect-in-charge of construction"
+    },
+    {
+      "a": "Sanitary drainage",
+      "b": "Storm drainage"
+    },
+    {
+      "a": "PSO (ground coverage)",
+      "b": "FLAR (total floor area)"
+    },
+    {
+      "a": "Amihan (NE, dry)",
+      "b": "Habagat (SW, rainy)"
+    },
+    {
+      "a": "Master's credits 1 year",
+      "b": "Experience still required"
+    }
+  ],
+  "recap": [
+    "Pass = 70% average AND 50% per subject",
+    "Weights 30 / 30 / 40",
+    "Day 1: A morning, B afternoon",
+    "Day 2: design, about 10 hours",
+    "Design answers are multiple choice",
+    "Sketch to test, then shade",
+    "One non-programmable calculator",
+    "NBCP excerpt stays unmarked",
+    "Bring Notice of Admission + ID",
+    "PSO, TGFA, FLAR: know the difference",
+    "Drawings show, specs describe",
+    "Sleep well before Day 2"
+  ]
+}

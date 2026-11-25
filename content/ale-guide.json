@@ -1,0 +1,482 @@
+{
+  "updated": "2026-11",
+  "sources": [
+    {
+      "label": "PRC exam programs & Board of Architecture syllabi",
+      "url": "https://www.prc.gov.ph"
+    },
+    {
+      "label": "Republic Act No. 9266",
+      "url": "https://lawphil.net/statutes/repacts/ra2004/ra_9266_2004.html"
+    }
+  ],
+  "toc": [
+    {
+      "id": "g-glance",
+      "label": "At a glance"
+    },
+    {
+      "id": "g-schedule",
+      "label": "Schedule"
+    },
+    {
+      "id": "g-passing",
+      "label": "How you pass"
+    },
+    {
+      "id": "g-syllabus",
+      "label": "Syllabus"
+    },
+    {
+      "id": "g-eligible",
+      "label": "Who can take it"
+    },
+    {
+      "id": "g-strategy",
+      "label": "Study plan"
+    },
+    {
+      "id": "g-day",
+      "label": "Exam day"
+    },
+    {
+      "id": "g-myths",
+      "label": "Common mistakes"
+    },
+    {
+      "id": "g-final",
+      "label": "Final 7 days"
+    }
+  ],
+  "glance": [
+    {
+      "label": "EXAM",
+      "value": "Architect Licensure Examination (ALE)"
+    },
+    {
+      "label": "GIVEN BY",
+      "value": "PRC, through the Board of Architecture"
+    },
+    {
+      "label": "HELD",
+      "value": "Twice a year, on PRC-set dates"
+    },
+    {
+      "label": "LENGTH",
+      "value": "2 consecutive exam days"
+    },
+    {
+      "label": "SUBJECTS",
+      "value": "3, weighted 30 / 30 / 40"
+    },
+    {
+      "label": "FORMAT",
+      "value": "Multiple choice, incl. situational design problems"
+    },
+    {
+      "label": "TO PASS",
+      "value": "70% weighted average"
+    },
+    {
+      "label": "SUBJECT FLOOR",
+      "value": "No subject below 50%"
+    },
+    {
+      "label": "DEGREE",
+      "value": "BS Architecture from a recognized school"
+    },
+    {
+      "label": "EXPERIENCE",
+      "value": "2 years diversified, certified by an architect"
+    },
+    {
+      "label": "MASTER'S DEGREE",
+      "value": "Credits 1 of the 2 years"
+    },
+    {
+      "label": "GOVERNING LAW",
+      "value": "RA 9266, Architecture Act of 2004"
+    }
+  ],
+  "sessions": [
+    {
+      "day": "DAY 1 · MORNING",
+      "time": "About 8:00 AM – 1:00 PM",
+      "length": "≈ 5 hours",
+      "code": "SUBJECT A",
+      "name": "History & Theory of Architecture, Principles of Planning & Architectural Practice",
+      "format": "Multiple choice. Recall plus applied items on laws, ethics, contracts and planning standards.",
+      "weight": "30%",
+      "color": "#2f5fae"
+    },
+    {
+      "day": "DAY 1 · AFTERNOON",
+      "time": "About 2:00 PM – 7:00 PM",
+      "length": "≈ 5 hours",
+      "code": "SUBJECT B",
+      "name": "Structural Conceptualization, Building Materials & Technology, and Utilities",
+      "format": "Multiple choice. Concept and code-limit items; light computation, so bring your calculator.",
+      "weight": "30%",
+      "color": "#7fa6e6"
+    },
+    {
+      "day": "DAY 2 · FULL DAY",
+      "time": "About 8:00 AM – 6:00 PM",
+      "length": "≈ 10 hours",
+      "code": "SUBJECT C",
+      "name": "Architectural Design & Site Planning",
+      "format": "Several situational design and site problems, each with multiple-choice answers. You sketch on scratch paper to test layouts, then shade the answer sheet. This replaced the old single drafting plate.",
+      "weight": "40%",
+      "color": "#e59819"
+    }
+  ],
+  "syllabus": {
+    "A": {
+      "weight": "30%",
+      "when": "DAY 1 · MORNING · 30%",
+      "name": "History & Theory of Architecture, Principles of Planning & Architectural Practice",
+      "courseId": 1,
+      "cta": "Subject A Reviewer · ₱49",
+      "note": "Covered by our Subject A Reviewer and 300-item Quiz Pack.",
+      "groups": [
+        {
+          "title": "History of architecture",
+          "items": [
+            "Prehistoric and ancient works",
+            "Western styles, classical to modern",
+            "Asian and Pacific traditions",
+            "Philippine architecture, pre-colonial to contemporary",
+            "Heritage conservation and restoration"
+          ]
+        },
+        {
+          "title": "Theory of architecture",
+          "items": [
+            "Principles and elements of design",
+            "Space, form, order and proportion",
+            "Anthropometrics and proxemics",
+            "Tropical, climate-responsive design",
+            "Master architects and their ideas"
+          ]
+        },
+        {
+          "title": "Planning",
+          "items": [
+            "Urban and regional planning",
+            "Land use and zoning",
+            "Human settlements and housing",
+            "Urban design and public space",
+            "Site planning and landscape"
+          ]
+        },
+        {
+          "title": "Professional practice",
+          "items": [
+            "RA 9266 and the role of the PRBoA",
+            "UAP standards of professional practice",
+            "Code of ethics and conduct",
+            "Services, fees and agreements",
+            "Contract documents and specifications"
+          ]
+        },
+        {
+          "title": "Building laws",
+          "items": [
+            "PD 1096 National Building Code",
+            "BP 344 Accessibility Law",
+            "RA 9514 Fire Code",
+            "Related referral codes"
+          ]
+        }
+      ]
+    },
+    "B": {
+      "weight": "30%",
+      "when": "DAY 1 · AFTERNOON · 30%",
+      "name": "Structural Conceptualization, Building Materials & Technology, and Utilities",
+      "courseId": 2,
+      "cta": "Subject B Reviewer · ₱49",
+      "note": "Covered by our Subject B Reviewer and 300-item Quiz Pack.",
+      "groups": [
+        {
+          "title": "Structural conceptualization",
+          "items": [
+            "Loads, forces and equilibrium",
+            "Stress, strain and material behaviour",
+            "Structural systems and framing",
+            "Seismic principles and the NSCP",
+            "Timber, concrete, steel and composite"
+          ]
+        },
+        {
+          "title": "Building materials",
+          "items": [
+            "Concrete, masonry and finishes",
+            "Wood, carpentry and joinery",
+            "Metals and sheet metal",
+            "Waterproofing, dampproofing, insulation",
+            "Glass, glazing, doors, windows, hardware"
+          ]
+        },
+        {
+          "title": "Construction & technology",
+          "items": [
+            "Construction methods and sequencing",
+            "Specifications",
+            "Quality control and site safety",
+            "Quantity estimates",
+            "Prefabricated and emerging systems"
+          ]
+        },
+        {
+          "title": "Building utilities",
+          "items": [
+            "Water supply, plumbing and sanitary",
+            "Storm drainage and waste systems",
+            "Electrical power and lighting",
+            "HVAC and acoustics",
+            "Fire protection, conveyors, security, communications"
+          ]
+        }
+      ]
+    },
+    "C": {
+      "weight": "40%",
+      "when": "DAY 2 · FULL DAY · 40%",
+      "name": "Architectural Design & Site Planning",
+      "courseId": null,
+      "cta": null,
+      "note": "Subject C materials are not on ArkiPrep yet. Use this list to plan your own timed design practice.",
+      "groups": [
+        {
+          "title": "Design method",
+          "items": [
+            "Reading the problem statement",
+            "Programming and space schedules",
+            "Adjacency and functional relationships",
+            "Circulation and zoning of spaces",
+            "Form, massing and systems coordination"
+          ]
+        },
+        {
+          "title": "Site analysis & planning",
+          "items": [
+            "Topography and contours",
+            "Sun path, wind and rainfall",
+            "Context, access and views",
+            "Vehicle and pedestrian circulation",
+            "Open space and landscape"
+          ]
+        },
+        {
+          "title": "Development controls",
+          "items": [
+            "Setbacks, yards and easements",
+            "Percentage of site occupancy",
+            "Floor area and height limits",
+            "Parking and loading",
+            "Accessibility and egress in layouts"
+          ]
+        },
+        {
+          "title": "Building types",
+          "items": [
+            "Residential and mixed-use",
+            "Commercial and institutional",
+            "Educational and healthcare",
+            "Recreation, religious and government",
+            "Transport, industrial and complex projects"
+          ]
+        }
+      ]
+    }
+  },
+  "eligibility": [
+    "Filipino citizen, or a foreign national whose country allows Filipino architects to practise there (reciprocity)",
+    "Of good moral character",
+    "Graduate of BS Architecture from a school recognized by the government",
+    "At least 2 years of diversified architectural experience, certified by a registered and licensed architect",
+    "A Master's in Architecture can credit 1 of those 2 years"
+  ],
+  "retakeNote": "You can apply for the next scheduled exam. Repeaters submit updated requirements, including a current NBI clearance. Check PRC's checklist when you file.",
+  "studyPlan": {
+    "totalHours": 200,
+    "split": {
+      "A": 55,
+      "B": 55,
+      "C": 90
+    },
+    "phases": [
+      {
+        "weeks": "WEEKS 1–2",
+        "title": "Diagnose",
+        "items": [
+          "Take a baseline test in every subject",
+          "Mark weak topics on the syllabus list above",
+          "Fix one daily study block and protect it"
+        ],
+        "useLabel": "Free 25-item diagnostic",
+        "courseId": 6
+      },
+      {
+        "weeks": "WEEKS 3–6",
+        "title": "Build",
+        "items": [
+          "Rotate Subject A and B reading by day",
+          "Turn each law into a one-page table",
+          "Start one design problem a week"
+        ],
+        "useLabel": "Subject A & B reviewers",
+        "courseId": 1
+      },
+      {
+        "weeks": "WEEKS 7–10",
+        "title": "Apply",
+        "items": [
+          "Timed quizzes, 50–100 items a sitting",
+          "Keep an error log: why you missed it",
+          "Two timed design problems a week"
+        ],
+        "useLabel": "300-item quiz packs",
+        "courseId": 4
+      },
+      {
+        "weeks": "WEEKS 11–12",
+        "title": "Simulate",
+        "items": [
+          "Full sittings at real length: 5 h, 5 h, full day",
+          "Review only your error log and tables",
+          "No new topics in the last 3 days"
+        ],
+        "useLabel": "Full mock board",
+        "courseId": 3
+      }
+    ],
+    "week": [
+      {
+        "day": "MON",
+        "task": "Subject A · read + 50 items",
+        "kind": "a"
+      },
+      {
+        "day": "TUE",
+        "task": "Design problem · timed",
+        "kind": "c"
+      },
+      {
+        "day": "WED",
+        "task": "Subject B · read + 50 items",
+        "kind": "a"
+      },
+      {
+        "day": "THU",
+        "task": "Design problem · timed",
+        "kind": "c"
+      },
+      {
+        "day": "FRI",
+        "task": "Weak topics from error log",
+        "kind": "a"
+      },
+      {
+        "day": "SAT",
+        "task": "Mixed timed set · 100 items",
+        "kind": "a"
+      },
+      {
+        "day": "SUN",
+        "task": "Rest + 30 min error-log review",
+        "kind": "r"
+      }
+    ]
+  },
+  "examDayKit": [
+    {
+      "title": "Both days",
+      "items": [
+        "Notice of Admission and a valid ID",
+        "Two or more No. 2 pencils",
+        "Black-ink ballpens",
+        "One non-programmable calculator (it is checked and reset)"
+      ]
+    },
+    {
+      "title": "Design day adds",
+      "items": [
+        "Architect's scales",
+        "30°–60° and 45° triangles, protractor",
+        "Sketching pencils, pens and erasers",
+        "Graphing or bond scratch paper",
+        "NBCP excerpt, Rules VII & VIII, clean and unmarked"
+      ]
+    },
+    {
+      "title": "Leave at home",
+      "items": [
+        "Programmable calculators",
+        "Annotated or highlighted code copies",
+        "Phones and smart devices in the exam room",
+        "Plans to keep scratch paper: all papers are surrendered"
+      ]
+    }
+  ],
+  "myths": [
+    {
+      "myth": "“My average is 72%, so I passed.”",
+      "fact": "You also need at least 50% in every subject. One weak subject fails the whole exam."
+    },
+    {
+      "myth": "“Two days means two subjects.”",
+      "fact": "There are three. Day 1 has two 5-hour sessions; Day 2 is all design."
+    },
+    {
+      "myth": "“Design day is one big drafting plate.”",
+      "fact": "It is now a set of situational design and site problems with multiple-choice answers. Sketch to test, then shade."
+    },
+    {
+      "myth": "“My master's replaces work experience.”",
+      "fact": "It credits one year. You still need the other year of diversified experience."
+    },
+    {
+      "myth": "“Any calculator will do.”",
+      "fact": "Only one non-programmable calculator, and it is inspected at the door."
+    },
+    {
+      "myth": "“I'll highlight my NBCP copy.”",
+      "fact": "Bring a clean, unmarked copy of Rules VII and VIII. Marked copies can be taken."
+    },
+    {
+      "myth": "“Review questions are leaked board items.”",
+      "fact": "Legitimate reviewers write original questions that follow the syllabus. Ours do too."
+    }
+  ],
+  "finalWeek": [
+    "Check your venue, room and reporting time on your Notice of Admission",
+    "Pack both kits the night before; test your calculator battery",
+    "Read your one-page tables, not new chapters",
+    "Do one design problem to keep your speed up",
+    "Take a last full sitting only if you are 5+ days out",
+    "Sleep 7–8 hours, especially before Day 2",
+    "Eat before each session; Day 2 runs close to 10 hours"
+  ],
+  "calculatorPresets": [
+    {
+      "label": "Passes",
+      "A": 74,
+      "B": 71,
+      "C": 77
+    },
+    {
+      "label": "Fails on floor",
+      "A": 88,
+      "B": 86,
+      "C": 46
+    },
+    {
+      "label": "Fails on average",
+      "A": 68,
+      "B": 66,
+      "C": 70
+    }
+  ]
+}

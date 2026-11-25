@@ -77,6 +77,49 @@
       </div>
     </section>
 
+    <!-- ALE guide teaser. Hidden unless the content_pages_enabled setting is
+         on: shown right away from this tab's cached settings, otherwise by
+         home.js once settings load. -->
+    <section class="exam-block" id="exam-block" aria-labelledby="exam-block-title" data-reveal hidden>
+      <div class="exam-block-top">
+        <div class="stack gap-10 exam-block-copy">
+          <div class="eyebrow eyebrow--light">Know the exam before you review</div>
+          <h2 id="exam-block-title">Two days, three subjects, and one rule that catches people out.</h2>
+          <p>You need a 70% weighted average <strong>and</strong> at least 50% in every subject. Our free ALE guide walks through the schedule, the full syllabus and a 12-week review plan.</p>
+        </div>
+        <div class="row gap-10 wrap-flex">
+          <a class="btn btn--light" href="ale-guide">Read the ALE guide →</a>
+          <a class="btn btn--outline-light" href="ale-guide#g-passing">Score calculator</a>
+        </div>
+      </div>
+      <ul class="exam-days">
+        <li>
+          <div class="row-between"><span class="mono-label">Day 1 · Morning</span><strong>30%</strong></div>
+          <div class="exam-day-name">Subject A · History, Theory, Planning &amp; Practice</div>
+          <div class="exam-day-meta">About 5 hours · multiple choice</div>
+          <div class="exam-day-bar" aria-hidden="true"><span style="width:30%"></span></div>
+        </li>
+        <li>
+          <div class="row-between"><span class="mono-label">Day 1 · Afternoon</span><strong>30%</strong></div>
+          <div class="exam-day-name">Subject B · Structures, Materials, Technology &amp; Utilities</div>
+          <div class="exam-day-meta">About 5 hours · multiple choice</div>
+          <div class="exam-day-bar" aria-hidden="true"><span style="width:30%"></span></div>
+        </li>
+        <li>
+          <div class="row-between"><span class="mono-label">Day 2 · Full day</span><strong>40%</strong></div>
+          <div class="exam-day-name">Subject C · Architectural Design &amp; Site Planning</div>
+          <div class="exam-day-meta">About 10 hours · situational design problems</div>
+          <div class="exam-day-bar exam-day-bar--c" aria-hidden="true"><span style="width:40%"></span></div>
+        </li>
+      </ul>
+    </section>
+    <script>
+      try {
+        var s = (JSON.parse(sessionStorage.getItem('arkiprep-shell')) || {}).settings || {};
+        if (String(s.content_pages_enabled || '').trim().toLowerCase() === 'on') document.getElementById('exam-block').hidden = false;
+      } catch (e) { /* storage blocked */ }
+    </script>
+
     <section class="home-section stack gap-16" aria-labelledby="courses-title">
       <div class="row gap-16 wrap-flex" style="justify-content:space-between;align-items:flex-end" data-reveal>
         <h2 class="section-title" id="courses-title">Review courses</h2>

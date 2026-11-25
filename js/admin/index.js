@@ -17,6 +17,7 @@ const TABS = [
   { id: 'payouts',     label: '💸 Payouts',     module: () => import('./payouts.js') },
   { id: 'incidents',   label: '⚠️ Incidents',  module: () => import('./incidents.js') },
   { id: 'settings',    label: '⚙️ Settings',    module: () => import('./settings.js') },
+  { id: 'content',     label: '📄 Content',     module: () => import('./content.js') },
   { id: 'users',       label: '👥 Users',       module: () => import('./users.js') },
 ];
 

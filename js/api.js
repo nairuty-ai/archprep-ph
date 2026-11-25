@@ -284,6 +284,13 @@ export const admin = {
   listSettings:    ()        => call('admin-settings'),
   upsertSetting:   (key, value) => call('admin-settings?action=upsert', { method: 'POST', body: { key, value } }),
 
+  // Content pages (ALE guide, cheat sheet)
+  listContent:     ()        => call('admin-content'),
+  getContentVersion:(id)     => call(`admin-content?action=version&id=${encodeURIComponent(id)}`),
+  saveContent:     (body)    => call('admin-content?action=save',     { method: 'POST', body }),
+  restoreContent:  (versionId) => call('admin-content?action=restore', { method: 'POST', body: { version_id: versionId } }),
+  contentSettings: (body)    => call('admin-content?action=settings', { method: 'POST', body }),
+
   // Incidents
   listIncidents:   (params)  => call(`admin-incidents${params ? '?' + new URLSearchParams(params) : ''}`),
   resolveIncident: (id)      => call('admin-incidents?action=resolve',  { method: 'POST', body: { incident_id: id } }),

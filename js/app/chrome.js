@@ -64,6 +64,12 @@
       el('span', { text: '₱' + amount + ' for every friend who buys with your link · redeem once you reach ₱' + min }));
   }
 
+  // The ALE guide pages exist only while content_pages_enabled is on; on the
+  // guide pages themselves that is a given.
+  function guideOn(active, settings) {
+    return active === 'guide' || String((settings || {}).content_pages_enabled || '').trim().toLowerCase() === 'on';
+  }
+
   function navLink(href, label, key, active) {
     return el('a', { href: href, text: label, attrs: { 'aria-current': key === active ? 'page' : null } });
   }
@@ -106,6 +112,7 @@
       }));
 
     var tabs = el('nav', { 'class': 'nav-tabs', attrs: { 'aria-label': 'Primary' } },
+      guideOn(active, data.settings) && navLink('ale-guide', 'ALE guide', 'guide', active),
       navLink('catalog.html', 'Browse', 'catalog', active),
       user && navLink('my-learning.html', 'My learning', 'learning', active),
       user && navLink('earnings.html', 'Refer & earn', 'refer', active));
@@ -172,7 +179,8 @@
     var p = data.profile || {};
     return JSON.stringify([active, data.user ? data.user.email : null, p.display_name || null,
       data.user ? Number(data.balance) || 0 : 0,
-      String(s.announcement_banner || '').trim(), s.referral_amount || '9', s.payout_threshold || '100']);
+      String(s.announcement_banner || '').trim(), s.referral_amount || '9', s.payout_threshold || '100',
+      guideOn(active, s)]);
   }
 
   function draw(active, data) {

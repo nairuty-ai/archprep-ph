@@ -40,6 +40,9 @@ $('#reviews').replaceChildren(el('div', { class: 'marquee-track', style: `animat
 // ---------------------------------------------------------------------------
 const { settings } = await mountShell({ active: 'home' });
 
+// ALE guide teaser: only while the content pages are switched on.
+$('#exam-block').hidden = String(settings.content_pages_enabled || '').trim().toLowerCase() !== 'on';
+
 if (settings.exam_date) {
   $('#exam-chip').textContent =
     'Next ALE: ' + formatDate(settings.exam_date + 'T12:00:00+08:00', { month: 'short', year: 'numeric' });

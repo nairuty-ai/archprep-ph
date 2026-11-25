@@ -696,3 +696,37 @@ select.input { appearance: auto; }
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
   .btn.is-busy::after { animation: none; border-color: rgba(255, 255, 255, .8); }
 }
+
+/* ---------------------------------------------------------------------------
+ * ALE guide teaser on the home page (shown only while content_pages_enabled
+ * is on), plus the two light buttons it and the guide pages use.
+ * ------------------------------------------------------------------------- */
+.btn--light { background: #fff; color: var(--ink); font-weight: 700; white-space: nowrap; }
+.btn--light:hover { background: #f0f3f8; }
+.btn--outline-light { background: transparent; color: #fff; border-color: rgba(255, 255, 255, .4); font-weight: 700; white-space: nowrap; }
+.btn--outline-light:hover { background: rgba(255, 255, 255, .08); border-color: #fff; }
+.eyebrow--light { color: #a9c1ee; }
+.exam-block {
+  margin: 40px 64px 8px; padding: clamp(24px, 3.5vw, 40px); border-radius: 14px;
+  background: var(--navy); color: #fff; display: flex; flex-direction: column; gap: 26px;
+}
+.exam-block[hidden] { display: none; }
+.exam-block-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+.exam-block-copy { max-width: 660px; }
+.exam-block h2 { margin: 0; font-size: clamp(26px, 3vw, 34px); line-height: 1.12; font-weight: 800; letter-spacing: -.02em; text-wrap: pretty; }
+.exam-block p { margin: 0; font-size: 16px; line-height: 1.55; color: #d3dbea; }
+.exam-block p strong { color: #fff; }
+.exam-days { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.exam-days li { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); border-radius: var(--r-card); padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.exam-days .row-between { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.exam-days .mono-label { font: 600 12px/1.4 var(--mono); text-transform: uppercase; color: #a9c1ee; }
+.exam-days strong { font-weight: 800; font-size: 24px; }
+.exam-day-name { font-weight: 700; font-size: 16px; line-height: 1.35; }
+.exam-day-meta { font-size: 13px; color: #b9c4dc; }
+.exam-day-bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .14); }
+.exam-day-bar span { display: block; height: 100%; border-radius: 2px; background: #7fa6e6; }
+.exam-day-bar--c span { background: #f2c46b; }
+@media (max-width: 720px) {
+  .exam-block { margin: 24px 16px 0; }
+  .exam-block .btn { flex: 1; }
+}
