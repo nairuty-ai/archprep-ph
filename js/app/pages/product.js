@@ -163,6 +163,7 @@ async function render(product) {
   const includes = Array.isArray(product.includes) ? product.includes.filter((i) => typeof i === 'string') : [];
 
   root.removeAttribute('aria-busy');
+  root.classList.add('fade-in');
   root.replaceChildren(
     el('section', { class: 'course-hero' }, el('div', { class: 'inner' }, el('div', { class: 'stack gap-12' },
       el('nav', { class: 'crumbs', attrs: { 'aria-label': 'Breadcrumb' } },
@@ -176,13 +177,13 @@ async function render(product) {
         el('span', { style: 'color:#a9c1ee', text: accessLine(product, settings) }))))),
     el('div', { class: 'course-body' },
       el('div', { class: 'stack gap-32', style: 'padding-top:32px' },
-        includes.length > 0 && el('section', { class: 'card stack gap-12', style: 'border-radius:0;padding:24px' },
+        includes.length > 0 && el('section', { class: 'card stack gap-12', style: 'border-radius:0;padding:24px', attrs: { 'data-reveal': true } },
           el('h2', { style: 'font-size:22px;font-weight:800', text: 'What you’ll be able to do' }),
           el('ul', { class: 'learn-list' }, ...includes.map((i) => el('li', { text: i })))),
-        el('section', { class: 'stack gap-12' },
+        el('section', { class: 'stack gap-12', attrs: { 'data-reveal': true } },
           el('h2', { style: 'font-size:22px;font-weight:800', text: 'Course content' }),
           el('div', { class: 'module-list' }, ...contentList())),
-        product.description && el('section', { class: 'stack gap-12' },
+        product.description && el('section', { class: 'stack gap-12', attrs: { 'data-reveal': true } },
           el('h2', { style: 'font-size:22px;font-weight:800', text: 'About this course' }),
           ...paragraphs(product.description))),
       buyBox()),

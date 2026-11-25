@@ -11,9 +11,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/app.css" />
   <script src="config.js"></script>
+  <script>
+    // Motion layer (js/app/motion.js): pre-animation states apply only under
+    // this class, and only when the visitor hasn't asked for reduced motion.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion-ready');
+  </script>
 </head>
 <body>
   <div id="site-header"></div>
+  <script src="js/app/chrome.js"></script>
 
   <main id="main" class="auth-page">
     <!-- Step 1: email -->

@@ -60,6 +60,7 @@ function render() {
     return true;
   });
 
+  if (list.hasAttribute('aria-busy')) list.classList.add('fade-in');
   list.removeAttribute('aria-busy');
   const scope = state.q ? ` for “${state.q}”` : '';
   $('#result-count').textContent =

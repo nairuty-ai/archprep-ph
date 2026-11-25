@@ -11,18 +11,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/app.css" />
   <script src="config.js"></script>
+  <script>
+    // Motion layer (js/app/motion.js): pre-animation states apply only under
+    // this class, and only when the visitor hasn't asked for reduced motion.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion-ready');
+  </script>
 </head>
 <body>
   <div id="site-header"></div>
+  <script src="js/app/chrome.js" data-active="catalog"></script>
 
   <main id="main">
     <div class="wrap page-pad stack gap-20" style="padding-top:32px">
-      <div class="stack gap-6">
+      <div class="stack gap-6" data-reveal>
         <h1 class="page-title">All ALE review courses</h1>
         <p class="muted" id="result-count" aria-live="polite">Loading courses…</p>
       </div>
 
-      <div class="chips" id="type-chips" role="group" aria-label="Course type">
+      <div class="chips" id="type-chips" role="group" aria-label="Course type" data-reveal>
         <button class="chip" type="button" data-type="all" aria-pressed="true">All</button>
         <button class="chip" type="button" data-type="material" aria-pressed="false">Materials</button>
         <button class="chip" type="button" data-type="quiz" aria-pressed="false">Quiz packs</button>
@@ -52,7 +58,7 @@
             </fieldset>
           </form>
         </div>
-        <div id="course-list" aria-busy="true"></div>
+        <div id="course-list" aria-busy="true" data-reveal-group></div>
       </div>
     </div>
   </main>

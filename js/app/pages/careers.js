@@ -1,7 +1,7 @@
 /* Work with us: no openings right now, so collect an email (required) and an
  * optional résumé to notify people when a role opens. */
 
-import { $ } from '../core.js';
+import { $, setBusy } from '../core.js';
 import { mountShell } from '../shell.js';
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -37,8 +37,7 @@ form.addEventListener('submit', async (e) => {
   if (!form.consent.checked) return fail(REASONS.CONSENT_REQUIRED);
 
   const btn = $('#submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
+  setBusy(btn, true);
   try {
     const res = await fetch(`${window.APP_CONFIG.SUPABASE_URL}/functions/v1/careers-interest`, {
       method: 'POST',
@@ -57,7 +56,6 @@ form.addEventListener('submit', async (e) => {
     $('#done').focus();
   } catch (err) {
     fail(err.message === 'Failed to fetch' ? 'You seem to be offline. Check your connection and try again.' : err.message);
-    btn.disabled = false;
-    btn.textContent = 'Notify me';
+    setBusy(btn, false);
   }
 });

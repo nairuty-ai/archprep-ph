@@ -8,7 +8,7 @@
  * Phase 3; this page keeps the same three steps.
  */
 
-import { supabase, el, $, $$, param, callFn, getProfile } from '../core.js';
+import { supabase, el, $, $$, param, callFn, getProfile, setBusy } from '../core.js';
 import { mountShell } from '../shell.js';
 import { currentRef } from '../../referral.js';
 
@@ -38,11 +38,6 @@ function setError(id, message) {
   const node = $(id);
   node.textContent = message || '';
   node.hidden = !message;
-}
-
-function busy(btn, on, label) {
-  btn.disabled = on;
-  if (label) btn.textContent = label;
 }
 
 // Where to go after login. A login link usually opens in a new tab, which
@@ -90,9 +85,9 @@ steps.email.addEventListener('submit', async (e) => {
   }
   setError('#email-error', '');
   const btn = $('#send-btn');
-  busy(btn, true, 'Sending…');
+  setBusy(btn, true);
   const { error } = await sendLoginEmail(value);
-  busy(btn, false, 'Send login email');
+  setBusy(btn, false);
   if (error) {
     setError('#email-error', authMessage(error));
     return;
@@ -118,6 +113,7 @@ function buildOtp() {
   const boxes = $$('input', wrap);
   boxes.forEach((box, i) => {
     box.addEventListener('input', () => {
+      wrap.classList.remove('is-error');
       const digits = box.value.replace(/\D/g, '');
       if (digits.length > 1) { spread(digits, i); return; }
       box.value = digits;
@@ -173,12 +169,16 @@ steps.code.addEventListener('submit', async (e) => {
   if (code().length !== 6) { setError('#code-error', 'Enter all 6 digits.'); return; }
   verifying = true;
   const btn = $('#verify-btn');
-  busy(btn, true, 'Verifying…');
+  setBusy(btn, true);
   const { data, error } = await supabase.auth.verifyOtp({ email, token: code(), type: 'email' });
   verifying = false;
-  busy(btn, false, 'Verify & continue');
+  setBusy(btn, false);
   if (error || !data?.user) {
     setError('#code-error', authMessage(error));
+    const otp = $('#otp');
+    otp.classList.remove('is-error');
+    void otp.offsetWidth; // restart the shake on a repeat miss
+    otp.classList.add('is-error');
     $$('#otp input').forEach((b) => { b.value = ''; });
     $('#otp input').focus();
     return;
@@ -216,7 +216,7 @@ steps.signup.addEventListener('submit', async (e) => {
   signupReady();
   const btn = $('#create-btn');
   if (btn.disabled) return;
-  busy(btn, true, 'Creating account…');
+  setBusy(btn, true);
   try {
     await callFn('complete-signup', {
       display_name: $('#display-name').value.trim(),
@@ -227,7 +227,7 @@ steps.signup.addEventListener('submit', async (e) => {
     });
     finish();
   } catch (err) {
-    busy(btn, false, 'Create account');
+    setBusy(btn, false);
     setError('#signup-error', {
       MOBILE_INVALID: 'Enter a PH mobile number like 0917 123 4567.',
       DISPLAY_NAME_INVALID: 'Display name must be 2–40 characters.',

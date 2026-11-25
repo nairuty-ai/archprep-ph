@@ -8,7 +8,7 @@
   --ink: #16181d;
   --navy: #1d2b4a;
   --primary: #2f5fae;
-  --primary-hover: #284f92;
+  --primary-hover: #264f93;
   --primary-soft: #eaf0fa;
   --primary-soft-text: #1f4686;
   --amber: #f2b33d;
@@ -49,6 +49,9 @@
 
   --gutter: 32px;
   --max: 1296px;
+
+  /* Motion: one easing; 150–220ms for feedback, 600–700ms for entrances. */
+  --ease: cubic-bezier(.2, .7, .2, 1);
 }
 
 @media (max-width: 720px) {
@@ -72,8 +75,12 @@ body {
 }
 main { flex: 1; display: flex; flex-direction: column; }
 img { max-width: 100%; display: block; }
-a { color: var(--primary); text-decoration: none; }
-a:hover { text-decoration: underline; }
+a {
+  color: var(--primary);
+  text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px;
+  transition: text-decoration-color 150ms var(--ease);
+}
+a:hover { text-decoration-color: currentColor; }
 button, input, select, textarea { font: inherit; color: inherit; }
 h1, h2, h3, p { margin: 0; }
 :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
@@ -128,7 +135,8 @@ h1, h2, h3, p { margin: 0; }
   border: 1px solid transparent; border-radius: var(--r-btn);
   font-weight: 800; font-size: 16px; line-height: 1.2;
   text-align: center; cursor: pointer; text-decoration: none !important;
-  transition: background-color .15s, border-color .15s, color .15s;
+  transition: background-color 180ms var(--ease), border-color 180ms var(--ease),
+              color 180ms var(--ease), transform 100ms var(--ease);
 }
 .btn--primary { background: var(--primary); color: #fff; }
 .btn--primary:hover { background: var(--primary-hover); }
@@ -247,14 +255,16 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
  * Placeholders, skeletons, stars
  * ------------------------------------------------------------------------- */
 .thumb {
-  aspect-ratio: 16 / 9; border: 1px solid var(--border); border-radius: var(--r-option);
+  position: relative; aspect-ratio: 16 / 9; border: 1px solid var(--border); border-radius: var(--r-option);
+  overflow: hidden; font: 500 11px var(--mono); color: var(--text-3);
+}
+.thumb-img {
+  position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 8px;
   background: var(--placeholder); background-size: cover; background-position: center;
-  display: flex; align-items: flex-end; padding: 8px;
-  font: 500 11px var(--mono); color: var(--text-3); overflow: hidden;
 }
 .skeleton {
-  background: linear-gradient(90deg, var(--surface-3) 25%, #f7f8fa 37%, var(--surface-3) 63%);
-  background-size: 400% 100%; animation: shimmer 1.4s ease infinite; border-radius: 6px;
+  background: linear-gradient(90deg, #f1f2f4 25%, #e9ebee 37%, #f1f2f4 63%);
+  background-size: 400% 100%; animation: shimmer 1.2s linear infinite; border-radius: 6px;
 }
 @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
@@ -281,9 +291,14 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .search-pill input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 15px; }
 .search-pill input::placeholder { color: var(--text-3); }
 .nav-tabs { display: flex; gap: 4px; flex: none; white-space: nowrap; font-size: 15px; font-weight: 600; }
-.nav-tabs a { color: var(--ink); padding: 8px 12px; border-bottom: 2px solid transparent; text-decoration: none; }
+.nav-tabs a {
+  color: var(--ink); padding: 8px 12px; border-bottom: 2px solid transparent; text-decoration: none;
+  transition: border-color 150ms var(--ease);
+}
+.nav-tabs a:hover { border-bottom-color: var(--border-strong); }
 .nav-tabs a[aria-current="page"] { border-bottom-color: var(--ink); }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.header-actions .btn { white-space: nowrap; }
 .earned-pill {
   background: var(--primary-soft); color: var(--primary-soft-text);
   font-weight: 700; font-size: 13px; padding: 6px 10px; border-radius: var(--r-pill); white-space: nowrap;
@@ -321,8 +336,15 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .tabbar { display: none; }
 
 @media (max-width: 900px) {
-  .site-header .bar { gap: 12px; flex-wrap: wrap; }
-  .search-pill { order: 3; flex-basis: 100%; }
+  /* Fixed two-row grid: logo + actions, then search. Unlike a wrapping flex
+     row it can't reflow when the web font swaps in (no layout shift). */
+  .site-header .bar {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px;
+    grid-template-areas: "logo actions" "search search";
+  }
+  .site-header .logo { grid-area: logo; }
+  .site-header .header-actions { grid-area: actions; justify-self: end; }
+  .search-pill { grid-area: search; }
   .nav-tabs { display: none; }
   .earned-pill { display: none; }
   .tabbar {
@@ -333,6 +355,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
   .tabbar a {
     min-height: 44px; display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 700; color: var(--text-3); text-decoration: none;
+    transition: color 150ms var(--ease);
   }
   .tabbar a[aria-current="page"] { color: var(--primary); }
 }
@@ -344,8 +367,26 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .hero-copy { padding: 64px 40px 56px 64px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
 .hero h1 { font-size: 54px; line-height: 1.03; letter-spacing: -.03em; font-weight: 800; text-wrap: pretty; }
 .hero .lead { font-size: 19px; line-height: 1.5; color: var(--text-2); max-width: 520px; }
-.hero-media { background: url('../assets/images/hero-architecture.jpg') center / cover; min-height: 360px; }
+.hero-media { position: relative; overflow: hidden; min-height: 360px; background: var(--surface-3); }
+.hero-slide {
+  position: absolute; inset: 0; background-size: cover; background-position: var(--pos, center);
+  opacity: 0; transition: opacity 900ms var(--ease);
+}
+.hero-slide.is-active { opacity: 1; }
+.hero-slides { position: absolute; inset: 0; }
+.hero-slide:first-child { background-image: url('../assets/images/hero-architecture.jpg'); }
+.hero-dots {
+  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  display: flex; gap: 6px; padding: 6px 8px; border-radius: var(--r-pill); background: rgba(22, 24, 29, .35);
+}
+.hero-dots button {
+  width: 8px; height: 8px; padding: 0; border: 0; border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .6); cursor: pointer; transition: width 300ms var(--ease), background-color 300ms var(--ease);
+}
+.hero-dots button[aria-current="true"] { width: 28px; background: #fff; }
+/* Fixed stat widths so the web font swapping in can't move the row (CLS). */
 .hero-stats { display: flex; gap: 28px; font-size: 14px; color: var(--text-2); padding-top: 6px; flex-wrap: wrap; }
+.hero-stats > div { min-width: 120px; }
 .hero-stats strong { display: block; font-size: 24px; font-weight: 800; color: var(--ink); }
 .home-section { padding: 48px 64px; }
 .subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -457,7 +498,8 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
   margin-top: -210px; align-self: start; position: sticky; top: 88px;
   background: #fff; border: 1px solid var(--border); box-shadow: var(--shadow-buy);
 }
-.buybox .thumb { border-radius: 0; border: 0; aspect-ratio: 16 / 9; justify-content: center; align-items: center; }
+.buybox .thumb { border-radius: 0; border: 0; aspect-ratio: 16 / 9; }
+.buybox .thumb-img { justify-content: center; align-items: center; }
 .buybox .body { padding: 22px; display: flex; flex-direction: column; gap: 12px; }
 .buybox .price { font-weight: 800; font-size: 32px; }
 .learn-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 28px; font-size: 15px; line-height: 1.45; list-style: none; padding: 0; margin: 0; }
@@ -517,6 +559,18 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .accordion summary::-webkit-details-marker { display: none; }
 .accordion summary::after { content: '+'; color: var(--text-3); }
 .accordion details[open] summary::after { content: '−'; }
+/* Enhanced by js/app/motion.js: the panel opens via grid rows, the icon's
+   vertical bar rotates flat to turn + into −. */
+.accordion.is-enhanced details summary::after { content: none; }
+.acc-icon { position: relative; flex: none; width: 14px; height: 14px; margin-top: 4px; color: var(--text-3); }
+.acc-icon::before, .acc-icon::after {
+  content: ''; position: absolute; left: 0; top: 6px; width: 14px; height: 2px; border-radius: 1px; background: currentColor;
+}
+.acc-icon::after { transform: rotate(90deg); transition: transform 200ms var(--ease); }
+details.is-open .acc-icon::after { transform: rotate(0deg); }
+.acc-panel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 200ms var(--ease); }
+details.is-open > .acc-panel { grid-template-rows: 1fr; }
+.acc-panel > div { overflow: hidden; }
 .accordion details p { margin-top: 10px; font-size: 15px; line-height: 1.6; color: var(--text-2); max-width: 720px; }
 @media (max-width: 800px) {
   .doc-layout { grid-template-columns: 1fr; gap: 20px; }
@@ -560,4 +614,85 @@ select.input { appearance: auto; }
 }
 @media (max-width: 900px) {
   .careers { grid-template-columns: 1fr; gap: 28px; }
+}
+
+/* ===========================================================================
+ * Motion (MOTION_PROMPT.md). Opacity and transform only, so no layout shift.
+ * Hidden "before" states apply only under html.motion-ready, which the head
+ * script sets when motion is allowed; without it everything simply shows.
+ * =========================================================================*/
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hero-image { from { opacity: 0; transform: scale(1.02); } to { opacity: 1; transform: none; } }
+@keyframes slow-zoom { from { transform: scale(1); } to { transform: scale(1.06); } }
+@keyframes slide-down { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes shake { 0%, 100% { transform: none; } 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 1. Home hero: copy staggers in 90ms apart, image settles from 1.02. */
+.motion-ready .hero-in { opacity: 0; animation: fade-up 700ms var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms); }
+.motion-ready .hero-media { animation: hero-image 1100ms var(--ease) 120ms both; }
+.motion-ready .hero-slide.is-active { animation: slow-zoom 7s ease-out both; }
+
+/* 2. Scroll reveal. motion.js marks only off-screen targets .reveal-pending
+   (so nothing already visible ever blinks), then swaps it for .is-revealing
+   while the 700ms transition runs; group children stagger via --d. */
+.motion-ready [data-reveal].reveal-pending,
+.motion-ready [data-reveal-group].reveal-pending > * { opacity: 0; transform: translateY(18px); }
+.motion-ready [data-reveal].is-revealing,
+.motion-ready [data-reveal-group].is-revealing > * {
+  transition: opacity 700ms var(--ease), transform 700ms var(--ease) !important;
+  transition-delay: var(--d, 0ms) !important;
+}
+
+/* 3. Hover and press (pointer devices only). */
+@media (hover: hover) {
+  .subject-card, .plan, .course-card, .course-row .thumb, .course-card .thumb {
+    transition: transform 220ms var(--ease), box-shadow 220ms var(--ease), border-color 220ms var(--ease);
+  }
+  .subject-card:hover, .plan:not(.plan--featured):hover {
+    transform: translateY(-3px); box-shadow: 0 12px 28px rgba(22, 24, 29, .08); border-color: #c9d6ee;
+  }
+  .plan--featured:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(22, 24, 29, .18); }
+  .course-card:hover { transform: translateY(-3px); }
+  .course-card:hover .thumb, .course-row:hover .thumb {
+    box-shadow: 0 12px 28px rgba(22, 24, 29, .08); border-color: #c9d6ee;
+  }
+  .course-row:hover .thumb { transform: translateY(-3px); }
+  .thumb-img { transition: transform 400ms var(--ease); }
+  .course-card:hover .thumb-img, .course-row:hover .thumb-img { transform: scale(1.03); }
+  .chip { transition: background-color 150ms var(--ease), border-color 150ms var(--ease), color 150ms var(--ease); }
+  .chip:hover:not([aria-pressed="true"]) { border-color: var(--ink); }
+}
+.btn:active:not(:disabled) { transform: scale(.98); }
+
+/* 4. UI feedback */
+.fade-in { animation: fade-in 150ms var(--ease) both; }
+.banner, .field-error:not([hidden]) { animation: slide-down 200ms var(--ease) both; }
+.toast { animation: toast-in 200ms var(--ease) both; }
+
+/* Submit buttons: label stays (width can't jump), a spinner sits on top. */
+.btn.is-busy { position: relative; color: transparent !important; pointer-events: none; }
+.btn.is-busy::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  border: 2px solid rgba(255, 255, 255, .45); border-top-color: #fff; border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+.btn--secondary.is-busy::after { border-color: rgba(22, 24, 29, .25); border-top-color: var(--ink); }
+
+/* OTP: focus ring eases in; a wrong code shakes the row and reddens it. */
+.otp input { transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
+.otp.is-error { animation: shake 300ms var(--ease); }
+.otp.is-error input { border-color: var(--danger-text); }
+
+/* Ready for results and referral screens: bars grow from the left. */
+.grow-x { transform-origin: left center; animation: grow-x 600ms var(--ease) both; animation-delay: var(--d, 0ms); }
+@keyframes grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Reduced motion: final state immediately, no entrances, zooms or shakes. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+  .btn.is-busy::after { animation: none; border-color: rgba(255, 255, 255, .8); }
 }

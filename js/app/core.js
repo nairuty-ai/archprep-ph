@@ -49,10 +49,19 @@ export function formatDate(value, opts = { month: 'short', day: 'numeric', year:
   return d.toLocaleDateString('en-PH', { ...opts, timeZone: 'Asia/Manila' });
 }
 
-export function toast(message, ms = 3000) {
+export function toast(message, ms = 4000) {
   const t = el('div', { class: 'toast', text: message, attrs: { role: 'status' } });
   document.body.appendChild(t);
   setTimeout(() => t.remove(), ms);
+}
+
+/** Busy state for submit buttons: spinner over the label, width held. */
+export function setBusy(btn, on) {
+  if (on) btn.style.width = `${btn.offsetWidth}px`;
+  else btn.style.width = '';
+  btn.classList.toggle('is-busy', on);
+  btn.disabled = on;
+  btn.setAttribute('aria-busy', String(on));
 }
 
 export function param(name) {
@@ -105,13 +114,14 @@ export function thumbUrl(product) {
   return data?.publicUrl ?? null;
 }
 
-/** A 16:9 cover, the striped placeholder until a real image is uploaded. */
+/** A 16:9 cover, the striped placeholder until a real image is uploaded.
+ *  The image sits in an inner layer so it can zoom on hover inside the frame. */
 export function thumb(product, cls = 'thumb') {
-  const node = el('div', { class: cls, attrs: { 'aria-hidden': 'true' } });
+  const img = el('div', { class: 'thumb-img' });
   const url = thumbUrl(product);
-  if (url) node.style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`;
-  else node.textContent = 'cover: ' + (product.title || '').toLowerCase();
-  return node;
+  if (url) img.style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`;
+  else img.textContent = 'cover: ' + (product.title || '').toLowerCase();
+  return el('div', { class: cls, attrs: { 'aria-hidden': 'true' } }, img);
 }
 
 // ---------------------------------------------------------------------------
