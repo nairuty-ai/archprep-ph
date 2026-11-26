@@ -34,7 +34,8 @@ with checks(migration, applied) as (
   ('0022_fn_v2_payouts_jobs',     exists (select 1 from pg_proc where proname = 'request_payout')),
   ('0023_setting_login_email_code', exists (select 1 from public.settings where key = 'login_email_code')),
   ('0024_job_interests',          to_regclass('public.job_interests') is not null),
-  ('0025_content_pages',          to_regclass('public.content_pages') is not null)
+  ('0025_content_pages',          to_regclass('public.content_pages') is not null),
+  ('0026_referral_reward_by_product', exists (select 1 from pg_proc where proname = 'referral_reward_for'))
 )
 select migration, case when applied then 'yes' else '— NOT APPLIED' end as applied
 from checks

@@ -57,11 +57,11 @@
   function promoBar(settings) {
     var text = String(settings.announcement_banner || '').trim();
     if (text) return el('div', { 'class': 'promo', attrs: { role: 'note' } }, el('span', { text: text }));
-    var amount = settings.referral_amount || '9';
-    var min = settings.payout_threshold || '100';
+    // Amounts and the payout minimum live in the referral terms, not here.
     return el('div', { 'class': 'promo', attrs: { role: 'note' } },
       el('strong', { text: 'Refer & earn:' }),
-      el('span', { text: '₱' + amount + ' for every friend who buys with your link · redeem once you reach ₱' + min }));
+      el('span', { text: 'cash rewards when friends buy with your link*' }),
+      el('a', { href: 'faq.html#referral-terms', text: '*Terms apply' }));
   }
 
   // The ALE guide pages exist only while content_pages_enabled is on; on the
@@ -179,7 +179,7 @@
     var p = data.profile || {};
     return JSON.stringify([active, data.user ? data.user.email : null, p.display_name || null,
       data.user ? Number(data.balance) || 0 : 0,
-      String(s.announcement_banner || '').trim(), s.referral_amount || '9', s.payout_threshold || '100',
+      String(s.announcement_banner || '').trim(),
       guideOn(active, s)]);
   }
 

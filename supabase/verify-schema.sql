@@ -1,5 +1,5 @@
 -- verify-schema.sql
--- Post-apply verification for the v2 schema (migrations 0001-0025).
+-- Post-apply verification for the v2 schema (migrations 0001-0026).
 --
 -- Read-only apart from objects in pg_temp, so it is safe to run against
 -- staging or production:
@@ -255,7 +255,7 @@ begin
     'quiz_attempts','session_idle_min','answer_reveal_mode','leaderboard_mode',
     'bank_bdo','bank_bpi','bank_metrobank','bank_unionbank','bank_landbank',
     'bank_account_name','bank_sla_hours','order_ttl_online_min','order_ttl_bank_h',
-    'brand_name','announcement_banner','contact_email','content_pages_enabled','site_domain'] loop
+    'brand_name','announcement_banner','contact_email','content_pages_enabled','site_domain','referral_amount_quiz'] loop
     perform pg_temp.chk('I. settings', format('setting %s present', k), 'present',
       (select case when count(*) = 1 then 'present' else 'MISSING' end from public.settings where key = k));
   end loop;

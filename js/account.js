@@ -123,7 +123,7 @@ function render(user, profile) {
   refCard.appendChild(el('p', { class: 'eyebrow', text: 'Refer & earn' }));
   refCard.appendChild(el('h2', { text: 'Your referral link' }));
   refCard.appendChild(
-    el('p', { class: 'desc', text: 'Share this link. When a friend buys, you earn a ₱9 reward — cash out via GCash when you reach ₱100.' }),
+    el('p', { class: 'desc', text: 'Share this link. When a friend buys a course, you earn a cash reward you can cash out via GCash.* Referral terms apply (FAQ → Terms).' }),
   );
 
   const refLink = buildRefLink(profile.ref_code);

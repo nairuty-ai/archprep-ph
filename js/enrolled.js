@@ -51,7 +51,7 @@ function renderSuccess(container) {
 
   // Referral share
   container.appendChild(el('hr', { attrs: { style: 'margin:2rem 0;border:none;border-top:1px solid var(--border-soft)' } }));
-  container.appendChild(el('p', { class: 'muted', text: 'Know someone else studying for the ALE? Share your referral link and earn ₱9 when they buy.' }));
+  container.appendChild(el('p', { class: 'muted', text: 'Know someone else studying for the ALE? Share your referral link and earn a cash reward when they buy.*' }));
   container.appendChild(
     el('a', { class: 'btn btn--outline', text: '🔗 Get my referral link', attrs: { href: '/earnings.html' } }),
   );

@@ -343,6 +343,36 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- Referral commission by product (0026): quiz ₱5, reviewer/mock ₱9, free or
+-- ₱0 orders nothing; only on a confirmed payment
+-- ---------------------------------------------------------------------------
+do $$
+declare v_id uuid;
+begin
+  insert into public.products (id, slug, type, subject, title, price_php, status, access_mode, attempts_per_purchase) values
+    ('20000000-0000-0000-0000-000000000011', 't-quiz-a', 'quiz', 'A', 'Subject A Quiz Pack', 19, 'published', 'attempts', 2),
+    ('20000000-0000-0000-0000-000000000012', 't-free',   'free', 'ALL', 'Free Diagnostic', 0, 'published', 'unlimited', null);
+
+  perform pg_temp.check('ref. amounts per product type',
+    public.referral_reward_for('20000000-0000-0000-0000-000000000011', 19) = 5
+    and public.referral_reward_for('20000000-0000-0000-0000-000000000002', 49) = 9
+    and public.referral_reward_for('20000000-0000-0000-0000-000000000001', 49) = 9
+    and public.referral_reward_for('20000000-0000-0000-0000-000000000012', 0) = 0
+    and public.referral_reward_for('20000000-0000-0000-0000-000000000002', 0) = 0);
+
+  -- Ben was referred by Ana: an unpaid quiz order earns nothing, a paid one ₱5
+  v_id := (public.create_order('10000000-0000-0000-0000-000000000002',
+            '20000000-0000-0000-0000-000000000011', 'gcash', null, null, true)->>'order_id')::uuid;
+  perform pg_temp.check('ref. no commission before payment',
+    not exists (select 1 from public.referrals where order_id = v_id));
+  perform public.apply_payment_paid(v_id, 19, 'PHP', 'pay_quiz_a', '{}');
+  perform pg_temp.check('ref. paid quiz pack earns the referrer ₱5',
+    (select amount_php from public.referrals where order_id = v_id) = 5
+    and (select amount_php from public.balance_ledger where source = 'referral'
+          and ref_id = (select id from public.referrals where order_id = v_id)) = 5);
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Content pages (0025): hidden until the flag is on; save keeps 10 versions,
 -- restore works, every write is audited
 -- ---------------------------------------------------------------------------

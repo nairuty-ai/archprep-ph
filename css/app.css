@@ -730,3 +730,4 @@ select.input { appearance: auto; }
   .exam-block { margin: 24px 16px 0; }
   .exam-block .btn { flex: 1; }
 }
+.promo a { color: #a9c1ee; font-size: 12px; text-decoration: underline; }

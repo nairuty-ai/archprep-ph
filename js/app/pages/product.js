@@ -138,7 +138,8 @@ async function render(product) {
         el('strong', { style: 'font-size:15px', text: 'This course includes' }),
         ...facts().map((f) => el('span', { text: '• ' + f }))),
       el('div', { class: 'banner banner--info' },
-        el('strong', { text: `Share & earn ₱${settings.referral_amount || 9}` }), ' each time a friend buys with your link.'));
+        el('strong', { text: 'Share & earn' }), ' a cash reward each time a friend buys with your link.* ',
+        el('a', { href: 'faq.html#referral-terms', text: 'Terms apply' })));
     return el('aside', { class: 'buybox', attrs: { 'aria-label': 'Purchase' } }, thumb(product, 'thumb'), body);
   }
 
