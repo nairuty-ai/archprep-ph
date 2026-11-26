@@ -16,5 +16,5 @@ tests
 docs
 sample-data
 design_handoff_archprep_v2
-worker
-content
+/worker
+/content
